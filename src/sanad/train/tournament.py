@@ -25,15 +25,13 @@ import yaml
 
 from sanad.data.prepare import load_interim
 from sanad.models.common import count_params
-from sanad.models.oxford import OxfordTeacher
+from sanad.models.factory import OXFORD_WEIGHTS, build_teacher
 from sanad.models.student import SanadTiny
-from sanad.models.teacher import SanadTeacher
-from sanad.models.transformer import EnsembleTeacher, SanadTransformer
-from sanad.paths import CONFIGS, INTERIM, RAW, RUNS
+from sanad.models.transformer import EnsembleTeacher
+from sanad.paths import CONFIGS, INTERIM, RUNS
 from sanad.train.loop import TrainConfig, pick_device, train
 from sanad.train.run_cv import prepare_fold, split_recordings, subject_of
 
-OXFORD_WEIGHTS = RAW / "oxford_ssl" / "mtl_5_best.mdl"
 METRICS = [  # (key in results, set, label, higher is better)
     ("spec_at_target", "test", "Specificity @ 95% sens.", True),
     ("auc", "test", "AUC", True),
@@ -44,25 +42,13 @@ METRICS = [  # (key in results, set, label, higher is better)
 ]
 
 
-def build_teacher(spec: dict, fd):
-    kind = spec["kind"]
-    if kind == "resnet":
-        return SanadTeacher()
-    if kind == "transformer":
-        return SanadTransformer(d_model=spec["d_model"], heads=spec["heads"], layers=spec["layers"],
-                                ff=spec["ff"])
-    if kind == "oxford":
-        return OxfordTeacher(fd.mean, fd.std, pretrained=OXFORD_WEIGHTS if spec["pretrained"] else None)
-    raise ValueError(f"unknown teacher kind {kind!r}")
-
-
 def run_fold(k, train_recs, test_recs, elderly, cfg, tcfg, dev, log) -> dict:
     fd = prepare_fold(k, train_recs, test_recs, elderly, cfg, dev, log)
     res: dict = {"trigger_g": fd.trigger_g, "params": {}, "train_s": {}, "best_epoch": {}}
 
     teachers = {}
     for name, spec in tcfg["teachers"].items():
-        model = build_teacher(spec, fd)
+        model = build_teacher(spec, fd.mean, fd.std)
         t0 = time.time()
         h = train(model, fd.norm, fd.xf, fd.yf, fd.xv, fd.yv, TrainConfig(
             epochs=spec["epochs"], lr=spec["lr"], weight_decay=spec.get("weight_decay", 1e-4),

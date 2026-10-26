@@ -1,0 +1,14 @@
+# The model that goes on the band (sanad.train.train_final). Chosen by the student-size tournament
+# (reports/student_size.md): a 45 k Sanad-Tiny distilled from the small transformer.
+base_config: train.yaml  # data, folds, augmentation, validation split, student training settings
+
+teacher: {kind: transformer, d_model: 128, heads: 4, layers: 4, ff: 256,
+          lr: 0.0005, weight_decay: 0.05, epochs: 120, patience: 25}
+student: {widths: [32, 64, 128], kernels: [7, 5, 3], dense: 64}  # 45.2 k params, 2.57 M MACs
+distill: {alpha: 0.5, temperature: 2.0}
+
+calibration:
+  # The decision threshold is picked on out-of-fold predictions from all 5 person-grouped folds
+  # (every person scored by a model that never saw them), so it rests on ~1,100 falls instead of
+  # one small validation set. Target: share of falls caught end to end (trigger + model).
+  target_event_sensitivity: 0.95

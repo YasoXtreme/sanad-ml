@@ -51,20 +51,28 @@ falls the trigger missed count as misses. Window metrics score only the windows 
 - Decision thresholds picked on validation people for 95 % sensitivity, then applied unchanged to test people.
 - Augmentation: random rotation (±25°), any roll around the forearm, left/right mirroring, gain, time shift, noise.
 
-## Final model (trained on all data, exported for the Pico 2 W)
+## Final model on the band (trained on all data, exported for the Pico 2 W)
+
+Chosen by the student-size tournament (`reports/student_size.md`): Sanad-Tiny with widths
+[32, 64, 128] distilled from the transformer teacher. Its
+decision threshold is calibrated on pooled out-of-fold predictions to catch
+95% of falls end to end.
 
 | | Value |
 |---|---|
 | Trigger threshold | 2.30 g |
-| Decision threshold | fall if probability ≥ 0.334 |
-| Sanad-Tiny size | 11,825 parameters, 0.72 M MACs, 23.0 KB int8 |
-| Teacher size | 942,625 parameters, 39.2 M MACs |
-| Validation, float | sensitivity 95.6%, specificity 97.3%, AUC 0.995 |
-| Validation, int8 (what the band runs) | sensitivity 94.7%, specificity 97.4%, AUC 0.995 |
+| Decision threshold | fall if probability ≥ 0.282 |
+| Sanad-Tiny size | 45,153 parameters, 2.57 M MACs, 59.3 KB int8 |
+| Teacher size | 549,249 parameters |
+| **Out-of-fold, all 5 folds pooled** (the honest estimate) | falls caught 95.1%, specificity 90.8%, false alarms 18.9/h of hard daily activity, elderly 27.5/h |
+| Validation, float | sensitivity 96.5%, specificity 97.4%, AUC 0.996 |
+| Validation, int8 (what the band runs) | sensitivity 96.5%, specificity 97.3%, AUC 0.996 |
 | TFLite ops | CONV_2D, EXPAND_DIMS, FULLY_CONNECTED, LOGISTIC, MAX_POOL_2D, MEAN, RESHAPE |
 
-The validation rows come from only a handful of held-out people (they set the decision threshold),
-so they run higher than the cross-validation tables above; quote the cross-validation numbers.
+The validation rows come from only a handful of held-out people, so they run higher than the
+out-of-fold row; quote the out-of-fold numbers. **False alarms are the open problem:** see
+`reports/false_alarms.md` (≈ 120 per normal day estimated at this threshold; the band needs a
+post-fall stillness check and its own recordings).
 
 Files: `models/sanad_tiny_int8.tflite`, `models/firmware/sanad_model_data.cc/.h`,
 `models/firmware/sanad_model_config.h`.

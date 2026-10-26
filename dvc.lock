@@ -66,6 +66,10 @@ stages:
   train_final:
     cmd: uv run --no-sync python -I -m sanad.train.train_final
     deps:
+    - path: configs/deploy.yaml
+      hash: md5
+      md5: f11477e6a7e90282ee8ee01199d331d3
+      size: 889
     - path: configs/train.yaml
       hash: md5
       md5: 7e80d00153e462e6a910a1d3993df591
@@ -90,43 +94,51 @@ stages:
       hash: md5
       md5: 72ab206405af843504fa59c6b98dbc34
       size: 5466
+    - path: src/sanad/eval/metrics.py
+      hash: md5
+      md5: 1fed506776e884f07c8cbceb0c0ee21c
+      size: 3724
     - path: src/sanad/export
       hash: md5
-      md5: afa3e851df2130a4de90b8f70145235c.dir
-      size: 28074
+      md5: 9b89dab2d35025c2a184d711e53176b0.dir
+      size: 28137
       nfiles: 8
     - path: src/sanad/models
       hash: md5
-      md5: 56313d97952a0dff29d36fb3ab8f701a.dir
-      size: 19266
-      nfiles: 8
+      md5: c7decef4c6d37da05d05c458fe876290.dir
+      size: 43871
+      nfiles: 14
     - path: src/sanad/train/loop.py
       hash: md5
       md5: c7606f05e1bc003fc4cc5f288ee2a0c7
       size: 6073
+    - path: src/sanad/train/run_cv.py
+      hash: md5
+      md5: 486bc11a1079b4de1e3c25b1b341719e
+      size: 11165
     - path: src/sanad/train/train_final.py
       hash: md5
-      md5: 85649eadbb7cf4ea31533b6bf6b9ce7a
-      size: 6907
+      md5: d6cf148299ad7acbacae049568933d18
+      size: 11211
     outs:
     - path: models/final_report.json
       hash: md5
-      md5: c4167184930b983dd55944046ddbeada
-      size: 1362
+      md5: 5b2168521b3ac58b8fe783ee38f8870c
+      size: 3145
     - path: models/firmware
       hash: md5
-      md5: 1e674997401e2edc430e2d2472284eaa.dir
-      size: 147859
+      md5: 8d3f0b8bf7ab686257788314bea77c92.dir
+      size: 376667
       nfiles: 3
     - path: models/sanad_tiny_int8.tflite
       hash: md5
-      md5: 0df324cb311ad0348c827fb5cc850d9c
-      size: 23600
+      md5: 389fc78d3a257d5d1b601f661cc0ec60
+      size: 60704
     - path: models/student.pt
       hash: md5
-      md5: 180920c1969b3f229f44c34ad67879fb
-      size: 56097
+      md5: 6888e0d035449801a5b1774330834231
+      size: 190305
     - path: models/teacher.pt
       hash: md5
-      md5: 9baddb0c198a0ae5dd5ed9b75035aadd
-      size: 3827975
+      md5: 5a3d6c227c6d1f15ab011e317aa54104
+      size: 2217717

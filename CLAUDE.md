@@ -17,9 +17,16 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
    there (a stumble can't hide the impact). Exact rule: `src/sanad/data/windowing.py` docstring.
 2. Window: 2.5 s before the peak to 1.5 s after = 200 samples × 7 channels `ax, ay, az, gx, gy, gz, |a|`,
    normalized with training-set per-channel mean/std (values in `models/firmware/sanad_model_config.h`).
-3. Student CNN "Sanad-Tiny" (≈11.7k params, ≈0.7 M MACs):
-   Conv(16,k7)-BN-ReLU-MaxPool2 → Conv(32,k5)-BN-ReLU-MaxPool2 → Conv(64,k3)-BN-ReLU-GAP → Dense32-ReLU-Dropout0.3 → Dense1.
-4. Decision threshold picked on validation for ≥ 95 % sensitivity.
+3. Student CNN "Sanad-Tiny", 45 k version (configs/deploy.yaml; 45,153 params, 2.57 M MACs, 59 KB int8):
+   Conv(32,k7)-BN-ReLU-MaxPool2 → Conv(64,k5)-BN-ReLU-MaxPool2 → Conv(128,k3)-BN-ReLU-GAP → Dense64-ReLU-Dropout0.3 → Dense1,
+   distilled from the small transformer teacher (won the student-size tournament, reports/student_size.md).
+4. Decision threshold calibrated on pooled out-of-fold predictions to catch 95 % of falls end to end
+   (sanad.train.train_final; currently 0.282).
+5. **Open problem: false alarms.** Trigger + model alone ≈ 120 false alarms per normal day (estimate,
+   reports/false_alarms.md; target ≤ 2/24 h). The firmware must not ring on the model alone: require
+   post-fall stillness (provisional: next 5 s with |a| std ≤ 0.30 g and mean |gyro| ≤ 60 °/s, removes
+   ~2/3 of false alarms, keeps ~96 % of falls), start with a quiet vibration, and log every trigger so
+   the band's own recordings become training data.
 
 ## Conventions
 - **Units**: acceleration in g, angular rate in °/s, time in s, 50 Hz everywhere after harmonization.

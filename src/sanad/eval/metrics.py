@@ -20,6 +20,27 @@ def threshold_for_sensitivity(y: np.ndarray, prob: np.ndarray, target: float = 0
     return float(pos[k])
 
 
+def threshold_for_event_sensitivity(meta: pd.DataFrame, recs: pd.DataFrame, prob: np.ndarray,
+                                    target: float = 0.95) -> float:
+    """Highest threshold that still catches `target` of all falls end to end.
+
+    A fall's score is the best probability among its fall windows; falls the trigger missed have
+    no window and can never be caught, so they push the threshold down (they count in the total).
+    """
+    fall_ids = recs.loc[recs.is_fall, "recording_id"].astype(str)
+    is_fall_win = (meta.label == 1).to_numpy()
+    best = (pd.Series(prob[is_fall_win], index=meta.loc[is_fall_win, "recording_id"].astype(str).to_numpy())
+            .groupby(level=0).max())
+    scores = np.sort(best.reindex(fall_ids).fillna(-np.inf).to_numpy())[::-1]
+    k = int(np.ceil(target * len(scores)))  # falls we must catch
+    if k == 0:
+        raise ValueError("no falls")
+    thr = scores[min(k, len(scores)) - 1]
+    if not np.isfinite(thr):  # target unreachable because of trigger misses: catch all we can
+        thr = scores[np.isfinite(scores)].min()
+    return float(thr)
+
+
 def window_metrics(y: np.ndarray, prob: np.ndarray, thr: float) -> dict:
     keep = y >= 0
     y, prob = y[keep], prob[keep]

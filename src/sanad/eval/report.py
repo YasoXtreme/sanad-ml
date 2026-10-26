@@ -123,21 +123,35 @@ def main(argv=None) -> int:
     if final.exists():
         fr = json.loads(final.read_text())
         s, q = fr["val_student_float"], fr["val_student_int8"]
+        oof = fr.get("out_of_fold")
+        oof_rows = "" if not oof else (
+            f"| **Out-of-fold, all 5 folds pooled** (the honest estimate) | falls caught "
+            f"{oof['pooled']['event_sensitivity']:.1%}, specificity {oof['pooled']['specificity']:.1%}, "
+            f"false alarms {oof['pooled']['false_alarms_per_hour']:.1f}/h of hard daily activity, "
+            f"elderly {oof['elderly']['false_alarms_per_hour']:.1f}/h |\n")
+        sc = fr["student"].get("config", {})
         final_md = f"""
-## Final model (trained on all data, exported for the Pico 2 W)
+## Final model on the band (trained on all data, exported for the Pico 2 W)
+
+Chosen by the student-size tournament (`reports/student_size.md`): Sanad-Tiny with widths
+{sc.get('widths', '?')} distilled from the {fr['teacher'].get('kind', 'ResNet')} teacher. Its
+decision threshold is calibrated on pooled out-of-fold predictions to catch
+{oof['target_event_sensitivity'] if oof else 0.95:.0%} of falls end to end.
 
 | | Value |
 |---|---|
 | Trigger threshold | {fr['trigger_g']:.2f} g |
 | Decision threshold | fall if probability ≥ {fr['decision_prob']:.3f} |
 | Sanad-Tiny size | {fr['student']['params']:,} parameters, {fr['student']['macs'] / 1e6:.2f} M MACs, {fr['tflite_bytes'] / 1024:.1f} KB int8 |
-| Teacher size | {fr['teacher']['params']:,} parameters, {fr['teacher']['macs'] / 1e6:.1f} M MACs |
-| Validation, float | sensitivity {s['sensitivity']:.1%}, specificity {s['specificity']:.1%}, AUC {s['auc']:.3f} |
+| Teacher size | {fr['teacher']['params']:,} parameters |
+{oof_rows}| Validation, float | sensitivity {s['sensitivity']:.1%}, specificity {s['specificity']:.1%}, AUC {s['auc']:.3f} |
 | Validation, int8 (what the band runs) | sensitivity {q['sensitivity']:.1%}, specificity {q['specificity']:.1%}, AUC {q['auc']:.3f} |
 | TFLite ops | {', '.join(fr['tflite_ops'])} |
 
-The validation rows come from only a handful of held-out people (they set the decision threshold),
-so they run higher than the cross-validation tables above; quote the cross-validation numbers.
+The validation rows come from only a handful of held-out people, so they run higher than the
+out-of-fold row; quote the out-of-fold numbers. **False alarms are the open problem:** see
+`reports/false_alarms.md` (≈ 120 per normal day estimated at this threshold; the band needs a
+post-fall stillness check and its own recordings).
 
 Files: `models/sanad_tiny_int8.tflite`, `models/firmware/sanad_model_data.cc/.h`,
 `models/firmware/sanad_model_config.h`.

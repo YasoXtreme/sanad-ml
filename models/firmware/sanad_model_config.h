@@ -18,8 +18,8 @@
 #define SANAD_PEAK_SEARCH      25       // samples after the threshold crossing to find the peak
 #define SANAD_ACC_LIMIT_G      8.0f    // clip each acc axis before |a| and the model
 #define SANAD_TRIGGER_G        2.3047f // |a| threshold that wakes the model
-#define SANAD_DECISION_PROB    0.3337f // fall if probability >= this
-#define SANAD_DECISION_Q       -43      // same threshold on the int8 output
+#define SANAD_DECISION_PROB    0.2821f // fall if probability >= this
+#define SANAD_DECISION_Q       -56      // same threshold on the int8 output
 
 // Input channels, in order: ax, ay, az, gx, gy, gz, amag (g, deg/s, Sanad frame)
 static const float kSanadMean[7] = {-0.45021012f, -0.22258998f, 0.070820078f, -3.5003104f, 1.628569f, -0.11023416f, 1.2797064f};

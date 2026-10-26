@@ -33,6 +33,9 @@ stages:
       - data/interim/fallalld.parquet
       - data/interim/pamap2.parquet
       - configs/train.yaml
+      - configs/deploy.yaml
+      - src/sanad/eval/metrics.py
+      - src/sanad/train/run_cv.py
       - src/sanad/data/windowing.py
       - src/sanad/data/augment.py
       - src/sanad/models
