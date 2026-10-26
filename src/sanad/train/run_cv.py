@@ -32,7 +32,7 @@ from sanad.models.student import SanadTiny
 from sanad.models.teacher import SanadTeacher
 from sanad.paths import CONFIGS, INTERIM, RUNS
 from sanad.train.baselines import features, threshold_scores, train_forest
-from sanad.train.loop import TrainConfig, predict, train
+from sanad.train.loop import TrainConfig, pick_device, predict, train
 
 APPROACHES = ["threshold", "forest", "teacher", "student", "student_kd"]
 
@@ -158,7 +158,9 @@ def main(argv=None) -> int:
     ap.add_argument("--datasets", nargs="*", help="override datasets.cv")
     ap.add_argument("--folds", type=int)
     ap.add_argument("--name", default=datetime.now().strftime("cv_%Y%m%d_%H%M"))
+    ap.add_argument("--allow-cpu", action="store_true", help="train even if no GPU is visible")
     args = ap.parse_args(argv)
+    dev = pick_device(args.allow_cpu)
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     if args.folds:
         cfg["folds"] = args.folds
@@ -178,7 +180,6 @@ def main(argv=None) -> int:
         with log_path.open("a", encoding="utf-8") as f:
             f.write(s + "\n")
 
-    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log(f"datasets {ds_ids}, device {dev}")
     recs = [r for d in ds_ids for r in load_interim(d)]
     hold = cfg["datasets"]["holdout_elderly"]

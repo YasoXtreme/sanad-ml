@@ -24,6 +24,19 @@ from sanad.data.augment import Augment
 from sanad.models.common import Normalize
 
 
+def pick_device(allow_cpu: bool = False) -> torch.device:
+    """The GPU, or stop with a clear message (on battery the laptop powers the RTX 5060 off)."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if allow_cpu:
+        return torch.device("cpu")
+    raise SystemExit(
+        "No CUDA GPU visible. On this laptop the RTX 5060 switches off on battery: plug in the "
+        "charger (and restart if it doesn't come back), check `nvidia-smi`, then rerun. "
+        "Pass --allow-cpu to train on the CPU anyway (many times slower)."
+    )
+
+
 @dataclass
 class TrainConfig:
     epochs: int = 80
