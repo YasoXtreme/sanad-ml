@@ -1,0 +1,6 @@
+outs:
+- md5: ba13085867410aac7b96351b30e9efae.dir
+  size: 17037714
+  nfiles: 1
+  hash: md5
+  path: oxford_ssl

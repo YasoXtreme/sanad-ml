@@ -42,6 +42,10 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
 - `uv run dvc pull` / `uv run dvc push`: data + models, store at `D:\dvc-store\sanad-ml`.
 - `uv run python -I -m sanad.data.download <ids>` → `uv run dvc repro` (harmonize all + train final + export).
 - `uv run python -I -m sanad.train.run_cv --name <run>` → `uv run python -I -m sanad.eval.report runs/<run>`.
+- `uv run python -I -m sanad.train.tournament --name <run>` → `uv run python -I -m sanad.eval.tournament_report runs/<run>`
+  (teacher + distillation tournament, configs/tournament.yaml; results in reports/tournament.md).
+- Oxford SSL-wearables weights (`data/raw/oxford_ssl`, DVC only) are under Oxford's Academic Use Licence:
+  never commit them, credit "Copyright © 2022, University of Oxford", no commercial use.
 - Training needs the GPU: the laptop powers the RTX 5060 off on battery (plug in the charger).
   Scripts that read downloaded data run with `python -I`.
 
