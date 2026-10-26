@@ -1,0 +1,12 @@
+# Data pipeline: raw downloads (dvc add'ed) -> harmonized 50 Hz parquet per dataset.
+#   uv run dvc repro            # rebuild whatever changed
+#   uv run dvc push             # back up to D:\dvc-store\sanad-ml
+stages:
+  prepare_weda_fall:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare weda_fall
+    deps:
+      - data/raw/weda_fall
+      - src/sanad/data/loaders/weda_fall.py
+      - src/sanad/data/harmonize.py
+    outs:
+      - data/interim/weda_fall.parquet

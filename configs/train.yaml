@@ -1,0 +1,38 @@
+# Cross-validation settings (sanad.train.run_cv). Change here, not in code.
+datasets:
+  cv: [weda_fall, fallalld, pamap2]   # person-grouped folds over all of these (pamap2 = daily activities only)
+  holdout_elderly: true               # WEDA participants aged 77-95 never trained on: elderly false-alarm test
+folds: 5
+val_fraction: 0.15                    # share of training subjects held out for early stopping + thresholds
+target_sensitivity: 0.95              # decision threshold picked on validation to catch this share of falls
+seed: 0
+
+teacher:
+  widths: [32, 64, 128, 160]
+  blocks: 2
+  epochs: 80
+  lr: 0.001
+  batch_size: 256
+  patience: 15
+
+student:
+  widths: [16, 32, 64]
+  kernels: [7, 5, 3]
+  dense: 32
+  epochs: 120
+  lr: 0.003
+  batch_size: 256
+  patience: 25
+
+distill:
+  alpha: 0.5          # label loss weight; the rest matches the teacher
+  temperature: 2.0
+  extra_per_batch: 0  # >0 mixes unlabeled windows scored only by the teacher (not used yet)
+
+augment:
+  rot_deg: 25
+  mirror_p: 0.5
+  scale: [0.9, 1.1]
+  shift: 10
+  noise_acc_g: 0.01
+  noise_gyro_dps: 1.0

@@ -1,0 +1,23 @@
+schema: '2.0'
+stages:
+  prepare_weda_fall:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare weda_fall
+    deps:
+    - path: data/raw/weda_fall
+      hash: md5
+      md5: 096a31087ad2f33502332bd4e4d072bf.dir
+      size: 144967515
+      nfiles: 15351
+    - path: src/sanad/data/harmonize.py
+      hash: md5
+      md5: 55681cc1463abeb59e2e66f17e06652a
+      size: 6801
+    - path: src/sanad/data/loaders/weda_fall.py
+      hash: md5
+      md5: 55d2f0ed82e34f53e8078188b5bf2568
+      size: 4644
+    outs:
+    - path: data/interim/weda_fall.parquet
+      hash: md5
+      md5: 1dc6cebb925ada2b416856cfc31a4c65
+      size: 11080765

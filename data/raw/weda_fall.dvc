@@ -1,0 +1,6 @@
+outs:
+- md5: 096a31087ad2f33502332bd4e4d072bf.dir
+  size: 144967515
+  nfiles: 15351
+  hash: md5
+  path: weda_fall

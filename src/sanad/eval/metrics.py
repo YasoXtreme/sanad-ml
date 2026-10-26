@@ -28,14 +28,14 @@ def window_metrics(y: np.ndarray, prob: np.ndarray, thr: float) -> dict:
     fn = int(np.sum(~pred & (y == 1)))
     tn = int(np.sum(~pred & (y == 0)))
     fp = int(np.sum(pred & (y == 0)))
-    sens = tp / max(tp + fn, 1)
+    sens = tp / (tp + fn) if tp + fn else float("nan")  # nan: no falls in this set
     spec = tn / max(tn + fp, 1)
     prec = tp / max(tp + fp, 1)
     return {
         "sensitivity": sens,
         "specificity": spec,
         "precision": prec,
-        "f1": 2 * prec * sens / max(prec + sens, 1e-12),
+        "f1": 2 * prec * sens / max(prec + sens, 1e-12) if tp + fn else float("nan"),
         "accuracy": (tp + tn) / max(len(y), 1),
         "auc": float(roc_auc_score(y, prob)) if len(np.unique(y)) == 2 else float("nan"),
         "tp": tp, "fn": fn, "tn": tn, "fp": fp,
@@ -54,7 +54,8 @@ def event_metrics(meta: pd.DataFrame, recs: pd.DataFrame, prob: np.ndarray, thr:
     return {
         "falls": len(falls),
         "falls_missed_by_trigger": int((~falls.detected.astype(bool)).sum()),
-        "event_sensitivity": len(caught & set(falls.recording_id.astype(str))) / max(len(falls), 1),
+        "event_sensitivity": (len(caught & set(falls.recording_id.astype(str))) / len(falls)
+                              if len(falls) else float("nan")),
         "adl_hours": hours,
         "false_alarms": false_alarms,
         "false_alarms_per_hour": false_alarms / hours if hours > 0 else float("nan"),

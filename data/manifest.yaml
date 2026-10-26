@@ -35,7 +35,7 @@ datasets:
     files:
       - name: WEDA-FALL-main.zip
         url: https://github.com/joaojtmarques/WEDA-FALL/archive/refs/heads/main.zip
-        sha256: null
+        sha256: 8049407911dbe5be551a39a5cf7815aa388ac0b6fce370ec64d5a7776909c722  # main @ 2026-10-26; changes if the repo is updated
     placement: [wrist]
     sensors: {acc: "Fitbit Sense", gyro: "Fitbit Sense", orientation: "Fitbit Sense"}
     rate_hz: 50
