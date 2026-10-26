@@ -1,0 +1,27 @@
+# Teacher + distillation tournament (sanad.train.tournament).
+# Same folds, windows, augmentation and student settings as configs/train.yaml (cv_v1),
+# so every contender is judged on exactly the same people.
+base_config: train.yaml
+
+teachers:
+  resnet:            {kind: resnet, lr: 0.001, epochs: 80, patience: 15}
+  transformer_small: {kind: transformer, d_model: 128, heads: 4, layers: 4, ff: 256,
+                      lr: 0.0005, weight_decay: 0.05, epochs: 120, patience: 25}
+  transformer_large: {kind: transformer, d_model: 256, heads: 8, layers: 6, ff: 512,
+                      lr: 0.0003, weight_decay: 0.05, epochs: 120, patience: 25}
+  oxford_scratch:    {kind: oxford, pretrained: false, lr: 0.001, epochs: 80, patience: 15}
+  oxford_pretrained: {kind: oxford, pretrained: true, lr: 0.0002, epochs: 60, patience: 15}
+
+# averaged logits of these teachers form one more contender
+ensemble: [resnet, transformer_small, transformer_large, oxford_scratch, oxford_pretrained]
+
+# every teacher (ensemble included) is distilled into Sanad-Tiny with every recipe,
+# plus Sanad-Tiny trained with no teacher at all
+recipes:
+  standard:     {alpha: 0.5, temperature: 2.0}  # half labels, half teacher (what cv_v1 used)
+  teacher_only: {alpha: 0.0, temperature: 2.0}  # learn only from the teacher's soft answers
+  hot:          {alpha: 0.5, temperature: 4.0}  # softer teacher answers, more "dark knowledge"
+
+# ranking: specificity on test people at exactly 95% sensitivity (each set's own threshold), so
+# rankings don't depend on how well a small validation set calibrated the decision threshold
+primary_metric: spec_at_target

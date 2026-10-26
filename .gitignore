@@ -13,6 +13,14 @@ __pycache__/
 *.part
 /runs/
 /tmp/
+# Downloads are never committed, even before `dvc add` (licences: e.g. the Oxford weights).
+# Only DVC's small pointer files and its own .gitignore files go into git.
+/data/raw/*
+!/data/raw/*.dvc
+!/data/raw/.gitignore
+/data/interim/*
+!/data/interim/.gitignore
+/data/processed/
 
 # Editors / OS
 .vscode/

@@ -14,6 +14,7 @@ import argparse
 import json
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -57,14 +58,53 @@ def tensors(w: Windows, dev):
     return (torch.as_tensor(w.x[keep], device=dev), torch.as_tensor(w.y[keep], device=dev))
 
 
-def evaluate(name, w: Windows, prob, thr, out: dict, prefix=""):
+def evaluate(name, w: Windows, prob, thr, out: dict, prefix="", target=0.95):
     keep = w.y >= 0
     m = window_metrics(w.y[keep], prob[keep], thr) if keep.any() else {}
     m.update(event_metrics(w.meta[keep].reset_index(drop=True), w.recs, prob[keep], thr))
+    if (w.y == 1).any():  # threshold-free comparison: specificity when this set's own threshold
+        oracle = threshold_for_sensitivity(w.y[keep], prob[keep], target)  # gives `target` sensitivity
+        m["spec_at_target"] = window_metrics(w.y[keep], prob[keep], oracle)["specificity"]
     out[f"{prefix}{name}"] = m
 
 
-def run_fold(k, train_recs, test_recs, elderly_recs, cfg, dev, log):
+@dataclass
+class Fold:
+    """Everything one fold needs, built only from that fold's training people."""
+
+    k: int
+    seed: int
+    trigger_g: float
+    w_fit: Windows
+    w_val: Windows
+    sets: dict  # "test" (+ "elderly") -> Windows
+    norm: Normalize
+    mean: np.ndarray
+    std: np.ndarray
+    xf: torch.Tensor
+    yf: torch.Tensor
+    xv: torch.Tensor
+    yv: torch.Tensor
+    aug: Augment
+    target: float
+    dev: torch.device
+
+    def score_all(self, fn) -> dict:
+        return {name: fn(w) for name, w in [("val", self.w_val), *self.sets.items()]}
+
+    def torch_scores(self, model) -> dict:
+        return self.score_all(lambda w: predict(model, self.norm, torch.as_tensor(w.x, device=self.dev)))
+
+    def finish(self, name: str, scores: dict, res: dict) -> None:
+        """Decision threshold from validation people, then metrics on every held-out set."""
+        kv = self.w_val.y >= 0
+        thr = threshold_for_sensitivity(self.w_val.y[kv], scores["val"][kv], self.target)
+        res[f"{name}_decision"] = float(thr)
+        for set_name, w in self.sets.items():
+            evaluate(name, w, scores[set_name], thr, res, prefix=f"{set_name}/", target=self.target)
+
+
+def prepare_fold(k, train_recs, test_recs, elderly_recs, cfg, dev, log) -> Fold:
     seed = cfg["seed"] + k
     # validation subjects (early stopping, decision thresholds) carved out of the training side
     subj = subject_of(train_recs)
@@ -82,31 +122,33 @@ def run_fold(k, train_recs, test_recs, elderly_recs, cfg, dev, log):
         f"val {len(w_val)} test {len(w_test)}" + (f" elderly {len(w_eld)}" if w_eld else ""))
 
     mean, std = channel_stats(w_fit.x[w_fit.y >= 0])
-    norm = Normalize(mean, std)
     xf, yf = tensors(w_fit, dev)
     xv, yv = tensors(w_val, dev)
-    sets = {"test": w_test, **({"elderly": w_eld} if w_eld else {})}
-    res: dict = {"trigger_g": trig}
-    aug = Augment(**{**cfg["augment"], "scale": tuple(cfg["augment"]["scale"])})
+    return Fold(
+        k=k, seed=seed, trigger_g=trig, w_fit=w_fit, w_val=w_val,
+        sets={"test": w_test, **({"elderly": w_eld} if w_eld else {})},
+        norm=Normalize(mean, std), mean=mean, std=std, xf=xf, yf=yf, xv=xv, yv=yv,
+        aug=Augment(**{**cfg["augment"], "scale": tuple(cfg["augment"]["scale"])}),
+        target=cfg["target_sensitivity"], dev=dev,
+    )
 
-    def score_all(fn):
-        return {name: fn(w) for name, w in [("val", w_val), *sets.items()]}
+
+def run_fold(k, train_recs, test_recs, elderly_recs, cfg, dev, log):
+    fd = prepare_fold(k, train_recs, test_recs, elderly_recs, cfg, dev, log)
+    seed, norm, aug = fd.seed, fd.norm, fd.aug
+    xf, yf, xv, yv, w_fit = fd.xf, fd.yf, fd.xv, fd.yv, fd.w_fit
+    res: dict = {"trigger_g": fd.trigger_g}
 
     def finish(name, scores):
-        yv_np = w_val.y[w_val.y >= 0]
-        thr = threshold_for_sensitivity(yv_np, scores["val"][w_val.y >= 0], cfg["target_sensitivity"])
-        res[f"{name}_decision"] = float(thr)
-        for set_name, w in sets.items():
-            evaluate(name, w, scores[set_name], thr, res, prefix=f"{set_name}/")
+        fd.finish(name, scores, res)
+
+    score_all, torch_scores = fd.score_all, fd.torch_scores
 
     # 1. threshold rule on peak |a|
     finish("threshold", score_all(lambda w: threshold_scores(w.x)))
     # 2. random forest
     rf = train_forest(w_fit.x, w_fit.y, seed=seed)
     finish("forest", score_all(lambda w: rf.predict_proba(features(w.x))[:, 1]))
-
-    def torch_scores(model):
-        return score_all(lambda w: predict(model, norm, torch.as_tensor(w.x, device=dev)))
 
     tc, sc, dc = cfg["teacher"], cfg["student"], cfg["distill"]
     # 3. teacher

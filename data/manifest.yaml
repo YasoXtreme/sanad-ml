@@ -117,6 +117,21 @@ datasets:
     rate_hz: 18
     subjects: 17
 
+  oxford_ssl:
+    title: "SSL-wearables harnet5: self-supervised wrist-accelerometer ResNet (UK Biobank, >700k person-days)"
+    tier: 2
+    role: pretrained_weights  # teacher tournament only; not data
+    access: auto
+    url: https://github.com/OxWearables/ssl-wearables
+    license: >-
+      Oxford Academic Use Licence: internal academic non-commercial use for education only; not in a
+      product for sale; credit "Copyright © 2022, University of Oxford". Weights stay in DVC, never git.
+    files:
+      - name: mtl_5_best.mdl  # 17 MB, 5 s windows at 30 Hz, accelerometer x/y/z in g
+        url: https://raw.githubusercontent.com/OxWearables/ssl-wearables/main/model_check_point/mtl_5_best.mdl
+        sha256: 74ffaefbafb467b7253d121ef71fe734ee03bc802ba33c33a6aa1aef7f91de5e
+    notes: "Yuan et al. 2024, npj Digital Medicine. Loaded with torch.load(weights_only=True) into our own copy of the architecture."
+
   capture24:
     title: "Capture-24: activity tracker dataset for human activity recognition"
     tier: 3
