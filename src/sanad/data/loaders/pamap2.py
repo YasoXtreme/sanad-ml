@@ -4,10 +4,14 @@ File layout: PAMAP2_Dataset/{Protocol,Optional}/subjectNNN.dat, space-separated,
   0 timestamp (s), 1 activityID, 2 heart rate, then 17 columns per IMU (hand, chest, ankle):
   +0 temperature, +1..3 acc +-16 g (m/s^2), +4..6 acc +-6 g, +7..9 gyro (rad/s), +10..12 mag,
   +13..16 orientation (invalid).
-The hand IMU's mounting isn't documented, so axes are found per subject from gravity:
-  - walking (arm down)      -> gravity along the forearm: that axis is Sanad x (toward the hand)
-  - computer work (palms down) -> back of the wrist faces up: that axis is Sanad z (out of the band)
-then y = z cross x. Right-wrist subjects are mirrored into the left-wrist frame.
+Axes, checked from gravity on all 8 usable subjects (2026-10-26):
+  - walking (arm down): gravity on -x in everyone -> sensor x points to the hand.
+  - desk / sitting: "up" lies between +y and +z (wrist rolled ~45 deg thumb-up), and the y sign
+    flips only for subject 108, the one left-hander -> the sensor sits the same way on each wrist,
+    so its axes already are the Sanad frame (x to the hand, z out of the back of the wrist, y = z x x).
+  Picking z per subject from desk gravity was unreliable (y and z are almost equal there), so the
+  mapping is fixed and only *checked* per subject. Right-wrist subjects are mirrored to the left.
+Subject 109 has no walking/sitting data in this release and is skipped.
 """
 
 from __future__ import annotations
@@ -33,19 +37,15 @@ MIN_SEGMENT_S = 4.0
 MAX_NAN_GAP_S = 0.1
 
 
-def _find_axes(acc_g: np.ndarray, act: np.ndarray) -> np.ndarray:
-    """3x3 matrix taking sensor axes to (toward hand, z cross x, out of the band face)."""
+def _check_axes(acc_g: np.ndarray, act: np.ndarray) -> str | None:
+    """Return a warning if this subject's gravity doesn't fit the fixed mounting."""
     walk = acc_g[act == 4].mean(0)
-    desk = acc_g[np.isin(act, [10, 17, 18])].mean(0)  # computer work / ironing / folding: palms down
-    xi = int(np.argmax(np.abs(walk)))
-    x = np.zeros(3)
-    x[xi] = -np.sign(walk[xi])  # arm down: gravity reads "up" = -x, so +x points to the hand
-    rest = [i for i in range(3) if i != xi]
-    zi = rest[int(np.argmax(np.abs(desk[rest])))]
-    z = np.zeros(3)
-    z[zi] = np.sign(desk[zi])  # back of the wrist up: +z reads +1 g
-    y = np.cross(z, x)
-    return np.stack([x, y, z])
+    desk = acc_g[np.isin(act, [2, 10, 17, 18])].mean(0)
+    if walk[0] > -0.6:
+        return f"walking gravity {np.round(walk, 2)} not mostly on -x"
+    if desk[2] < 0.2:
+        return f"sitting/desk gravity {np.round(desk, 2)} has no +z part"
+    return None
 
 
 def _segments(act: np.ndarray, valid: np.ndarray) -> list[tuple[int, int, int]]:
@@ -76,21 +76,23 @@ def load(raw_dir: Path, log=print) -> list[Recording]:
         sessions.append((f.stem.replace("subject", ""), f.parent.name.lower(), act, valid,
                          ms2_to_g(imu[:, :3]), rads_to_dps(imu[:, 3:])))
 
-    # one mounting per subject: find axes from all of that subject's sessions together
-    axes = {}
+    # one mounting per subject: check it on all of that subject's sessions together
+    usable = set()
     for subj in sorted({s[0] for s in sessions}):
         acts = np.concatenate([s[2][s[3]] for s in sessions if s[0] == subj])
         accs = np.concatenate([s[4][s[3]] for s in sessions if s[0] == subj])
-        if (acts == 4).any() and np.isin(acts, [10, 17, 18]).any():
-            axes[subj] = _find_axes(accs, acts)
+        if not ((acts == 4).any() and np.isin(acts, [2, 10, 17, 18]).any()):
+            log(f"[pamap2] subject {subj}: no walking/sitting data to check the mounting, skipped")
+        elif warning := _check_axes(accs, acts):
+            log(f"[pamap2] subject {subj}: {warning}, skipped")
         else:
-            log(f"[pamap2] subject {subj}: no walking/desk data to find axes, skipped")
+            usable.add(subj)
 
     recs: list[Recording] = []
     for subj, session, act, valid, acc_g, gyro_dps in sessions:
-        if subj not in axes:
+        if subj not in usable:
             continue
-        m = axes[subj]
+        m = np.eye(3)  # sensor axes are the Sanad frame (see module docstring)
         right = subj not in LEFT_HANDED
         for k, (a, b, code) in enumerate(_segments(act, valid)):
             if (b - a) / FS_IN < MIN_SEGMENT_S:
@@ -106,7 +108,6 @@ def load(raw_dir: Path, log=print) -> list[Recording]:
                 is_fall=False, acc=acc_h, gyro=gyro_h, age_group="young",
                 meta={"axes": m.tolist(), "right_wrist": right},
             ))
-        log(f"[pamap2] subject {subj} {session}: axes {np.round(m).astype(int).tolist()}, "
-            f"{'right' if right else 'left'} wrist")
+        log(f"[pamap2] subject {subj} {session}: {'right (mirrored)' if right else 'left'} wrist")
     log(f"[pamap2] {len(recs)} recordings")
     return recs

@@ -52,7 +52,7 @@ datasets:
     files:
       - name: pamap2+physical+activity+monitoring.zip  # 656 MB
         url: https://archive.ics.uci.edu/static/public/231/pamap2+physical+activity+monitoring.zip
-        sha256: null
+        sha256: 76b3580bd5a804121f507717cb498c66a312ef5c774f4a78ac470e6558add352  # server can't resume; slow
     placement: [wrist (dominant arm), chest, ankle]  # hand IMU only
     sensors: {acc: "+-16 g in m/s^2 (use this one; the +-6 g set saturates)", gyro: "rad/s"}
     rate_hz: 100

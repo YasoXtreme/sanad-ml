@@ -1,0 +1,6 @@
+outs:
+- md5: 8eba40acf602c5df44664abbe312773b.dir
+  size: 3109199919
+  nfiles: 24
+  hash: md5
+  path: pamap2

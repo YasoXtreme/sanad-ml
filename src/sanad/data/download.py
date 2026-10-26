@@ -102,11 +102,20 @@ def download_dataset(ds_id: str, spec: dict) -> None:
             if algo == "sha256" and not want:
                 print(f"[{ds_id}] {path.name} sha256 {got}  <- record this in data/manifest.yaml")
         if path.suffix == ".zip":
-            marker = out / f".unzipped_{path.stem}"
-            if not marker.exists():
-                safe_unzip(path, out)
-                marker.touch()
+            _unzip_all(path, out)
         print(f"[{ds_id}] {path.name} ready")
+
+
+def _unzip_all(archive: Path, out: Path) -> None:
+    """Unzip, then any archives that came out of it (e.g. PAMAP2 ships a zip inside a zip)."""
+    for _ in range(3):  # nesting depth limit
+        todo = [z for z in sorted(out.rglob("*.zip"))
+                if not (z.parent / f".unzipped_{z.stem}").exists()]
+        if not todo:
+            return
+        for z in todo:
+            safe_unzip(z, z.parent)
+            (z.parent / f".unzipped_{z.stem}").touch()
 
 
 def main(argv: list[str] | None = None) -> int:

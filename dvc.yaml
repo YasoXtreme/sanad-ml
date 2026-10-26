@@ -10,3 +10,11 @@ stages:
       - src/sanad/data/harmonize.py
     outs:
       - data/interim/weda_fall.parquet
+  prepare_pamap2:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare pamap2
+    deps:
+      - data/raw/pamap2
+      - src/sanad/data/loaders/pamap2.py
+      - src/sanad/data/harmonize.py
+    outs:
+      - data/interim/pamap2.parquet

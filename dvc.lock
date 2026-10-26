@@ -21,3 +21,24 @@ stages:
       hash: md5
       md5: 1dc6cebb925ada2b416856cfc31a4c65
       size: 11080765
+  prepare_pamap2:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare pamap2
+    deps:
+    - path: data/raw/pamap2
+      hash: md5
+      md5: 8eba40acf602c5df44664abbe312773b.dir
+      size: 3109199919
+      nfiles: 24
+    - path: src/sanad/data/harmonize.py
+      hash: md5
+      md5: 55681cc1463abeb59e2e66f17e06652a
+      size: 6801
+    - path: src/sanad/data/loaders/pamap2.py
+      hash: md5
+      md5: 8a92e2a18b5f429f38c651329d3a49a8
+      size: 5513
+    outs:
+    - path: data/interim/pamap2.parquet
+      hash: md5
+      md5: 0fd523f68582dda23af4e859f1b78b43
+      size: 54289015
