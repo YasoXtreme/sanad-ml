@@ -63,3 +63,70 @@ stages:
       hash: md5
       md5: 075e5ca6640a87fbe78be10488ae8a78
       size: 71080818
+  train_final:
+    cmd: uv run --no-sync python -I -m sanad.train.train_final
+    deps:
+    - path: configs/train.yaml
+      hash: md5
+      md5: 7e80d00153e462e6a910a1d3993df591
+      size: 1182
+    - path: data/interim/fallalld.parquet
+      hash: md5
+      md5: 075e5ca6640a87fbe78be10488ae8a78
+      size: 71080818
+    - path: data/interim/pamap2.parquet
+      hash: md5
+      md5: 0fd523f68582dda23af4e859f1b78b43
+      size: 54289015
+    - path: data/interim/weda_fall.parquet
+      hash: md5
+      md5: 1dc6cebb925ada2b416856cfc31a4c65
+      size: 11080765
+    - path: src/sanad/data/augment.py
+      hash: md5
+      md5: b38fe31df7f6a91df66149fa17cabb68
+      size: 3733
+    - path: src/sanad/data/windowing.py
+      hash: md5
+      md5: 72ab206405af843504fa59c6b98dbc34
+      size: 5466
+    - path: src/sanad/export
+      hash: md5
+      md5: f42c3c6d83edac7eba33d27a6e871be2.dir
+      size: 27966
+      nfiles: 8
+    - path: src/sanad/models
+      hash: md5
+      md5: 56313d97952a0dff29d36fb3ab8f701a.dir
+      size: 19266
+      nfiles: 8
+    - path: src/sanad/train/loop.py
+      hash: md5
+      md5: c7606f05e1bc003fc4cc5f288ee2a0c7
+      size: 6073
+    - path: src/sanad/train/train_final.py
+      hash: md5
+      md5: 85649eadbb7cf4ea31533b6bf6b9ce7a
+      size: 6907
+    outs:
+    - path: models/final_report.json
+      hash: md5
+      md5: c4167184930b983dd55944046ddbeada
+      size: 1362
+    - path: models/firmware
+      hash: md5
+      md5: 26254f95ad4f28d1a9ba9c4afe170fcb.dir
+      size: 149868
+      nfiles: 3
+    - path: models/sanad_tiny_int8.tflite
+      hash: md5
+      md5: 0df324cb311ad0348c827fb5cc850d9c
+      size: 23600
+    - path: models/student.pt
+      hash: md5
+      md5: 180920c1969b3f229f44c34ad67879fb
+      size: 56097
+    - path: models/teacher.pt
+      hash: md5
+      md5: 9baddb0c198a0ae5dd5ed9b75035aadd
+      size: 3827975

@@ -12,9 +12,11 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
 - MAX30102 is only for wear detection + heart-rate snapshot during the countdown. No ML for it.
 
 ## On-band pipeline (the training pipeline must mirror it exactly)
-1. Trigger: |a| (g) crosses a threshold chosen so ≥ 99 % of training falls trigger.
+1. Trigger: |a| (g) crosses a threshold chosen so ≥ 99 % of training falls trigger. The peak is the
+   highest |a| in the next 0.5 s; a strictly higher |a| before the window completes moves the peak
+   there (a stumble can't hide the impact). Exact rule: `src/sanad/data/windowing.py` docstring.
 2. Window: 2.5 s before the peak to 1.5 s after = 200 samples × 7 channels `ax, ay, az, gx, gy, gz, |a|`,
-   normalized with training-set per-channel mean/std.
+   normalized with training-set per-channel mean/std (values in `models/firmware/sanad_model_config.h`).
 3. Student CNN "Sanad-Tiny" (≈11.7k params, ≈0.7 M MACs):
    Conv(16,k7)-BN-ReLU-MaxPool2 → Conv(32,k5)-BN-ReLU-MaxPool2 → Conv(64,k3)-BN-ReLU-GAP → Dense32-ReLU-Dropout0.3 → Dense1.
 4. Decision threshold picked on validation for ≥ 95 % sensitivity.
@@ -27,6 +29,9 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
   axes into it too.
 - **Mirroring** left ↔ right wrist (same frame definition on both): flip y for acceleration; flip x and z
   for gyroscope (axial vector).
+- **Roll around the forearm is randomized in training** (`augment.roll_deg: 180`): FallAllD's loggers
+  were mounted inconsistently and a real band slides around the wrist. So only the forearm axis (+x,
+  toward the hand) must be right on the band; the y/z roll doesn't matter.
 - **Splits are by person** (`subject_id` prefixed with the dataset id). Never split windows randomly.
 - Falls that never trigger are counted as misses, never dropped.
 
@@ -35,6 +40,10 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
 - `uv run python scripts/check_env.py`: environment check, all PASS required.
 - `uv run pytest`, `uv run ruff check .`
 - `uv run dvc pull` / `uv run dvc push`: data + models, store at `D:\dvc-store\sanad-ml`.
+- `uv run python -I -m sanad.data.download <ids>` → `uv run dvc repro` (harmonize all + train final + export).
+- `uv run python -I -m sanad.train.run_cv --name <run>` → `uv run python -I -m sanad.eval.report runs/<run>`.
+- Training needs the GPU: the laptop powers the RTX 5060 off on battery (plug in the charger).
+  Scripts that read downloaded data run with `python -I`.
 
 ## Data
 Registry: `data/manifest.yaml`. Main sets: FallAllD (wrist, 238 Hz; manual download, IEEE login),

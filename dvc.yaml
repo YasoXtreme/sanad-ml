@@ -26,3 +26,23 @@ stages:
       - src/sanad/data/harmonize.py
     outs:
       - data/interim/fallalld.parquet
+  train_final:
+    cmd: uv run --no-sync python -I -m sanad.train.train_final
+    deps:
+      - data/interim/weda_fall.parquet
+      - data/interim/fallalld.parquet
+      - data/interim/pamap2.parquet
+      - configs/train.yaml
+      - src/sanad/data/windowing.py
+      - src/sanad/data/augment.py
+      - src/sanad/models
+      - src/sanad/train/loop.py
+      - src/sanad/train/train_final.py
+      - src/sanad/export
+    outs:
+      - models/teacher.pt
+      - models/student.pt
+      - models/sanad_tiny_int8.tflite
+      - models/final_report.json
+      - models/firmware:
+          cache: false  # small C files kept in git so the firmware team can use them directly
