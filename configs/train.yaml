@@ -31,6 +31,7 @@ distill:
 
 augment:
   rot_deg: 25
+  roll_deg: 180       # any roll around the forearm: FallAllD mounting varies, real bands slide
   mirror_p: 0.5
   scale: [0.9, 1.1]
   shift: 10

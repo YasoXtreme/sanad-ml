@@ -55,6 +55,15 @@ def test_refractory_period():
     assert find_triggers(amag, 2.5) == [500, 600]
 
 
+def test_higher_peak_before_window_ends_takes_over():
+    amag = np.ones(1000)
+    amag[[400, 450, 510]] = [3.0, 6.0, 7.0]  # stumble, then impact, then bigger impact
+    assert find_triggers(amag, 2.5) == [510]
+    amag = np.ones(1000)
+    amag[[400, 450]] = [6.0, 3.0]  # smaller bump inside the window does not move the peak
+    assert find_triggers(amag, 2.5) == [400]
+
+
 def test_trigger_picks_highest_peak_in_search_span():
     amag = np.ones(1000)
     amag[[400, 410]] = [3.0, 6.0]

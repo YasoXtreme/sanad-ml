@@ -125,15 +125,33 @@ def clip_acc(acc: np.ndarray, limit: float = ACC_LIMIT_G) -> np.ndarray:
 
 # --- one-call harmonization ----------------------------------------------------------------
 
+def rotation_between(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Smallest rotation taking direction `a` onto direction `b` (Rodrigues)."""
+    a = np.asarray(a, float) / np.linalg.norm(a)
+    b = np.asarray(b, float) / np.linalg.norm(b)
+    v, c = np.cross(a, b), float(a @ b)
+    if c < -0.999999:  # opposite: 180 deg about any axis perpendicular to a
+        p = np.cross(a, [1.0, 0, 0] if abs(a[0]) < 0.9 else [0, 1.0, 0])
+        p /= np.linalg.norm(p)
+        return 2 * np.outer(p, p) - np.eye(3)
+    k = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + k + k @ k / (1 + c)
+
+
 def harmonize(
     acc_g: np.ndarray,
     gyro_dps: np.ndarray,
     fs_in: float,
-    axes: str = "x=x,y=y,z=z",
+    axes: str | np.ndarray = "x=x,y=y,z=z",
     right_wrist: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Already-in-units arrays -> 50 Hz, Sanad frame, left wrist, acceleration clipped."""
-    m = axis_map_matrix(axes)
+    """Already-in-units arrays -> 50 Hz, Sanad frame, left wrist, acceleration clipped.
+
+    `axes` is a spec like "x=-y,y=x,z=z" or a 3x3 rotation matrix (sensor -> Sanad).
+    """
+    m = np.asarray(axes, float) if isinstance(axes, np.ndarray) else axis_map_matrix(axes)
+    if not np.allclose(m @ m.T, np.eye(3), atol=1e-6) or np.linalg.det(m) < 0:
+        raise ValueError("axes must be a proper rotation")
     acc = apply_axes(resample_to_fs(acc_g, fs_in), m)
     gyro = apply_axes(resample_to_fs(gyro_dps, fs_in), m)
     if right_wrist:

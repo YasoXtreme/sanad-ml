@@ -18,3 +18,11 @@ stages:
       - src/sanad/data/harmonize.py
     outs:
       - data/interim/pamap2.parquet
+  prepare_fallalld:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare fallalld
+    deps:
+      - data/raw/fallalld
+      - src/sanad/data/loaders/fallalld.py
+      - src/sanad/data/harmonize.py
+    outs:
+      - data/interim/fallalld.parquet

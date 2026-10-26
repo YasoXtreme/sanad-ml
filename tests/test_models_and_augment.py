@@ -38,11 +38,22 @@ def test_rotations_are_proper_and_bounded():
     assert angle.max() <= 25.0 + 1e-3
 
 
+def test_roll_keeps_the_forearm_axis():
+    x = torch.randn(8, 200, 6)
+    roll = Augment(rot_deg=0, roll_deg=180, mirror_p=0, scale=(1, 1), shift=0, noise_acc_g=0,
+                   noise_gyro_dps=0)
+    y = roll(x.clamp(-4, 4))
+    assert torch.allclose(y[..., [0, 3]], x.clamp(-4, 4)[..., [0, 3]], atol=1e-5)  # x untouched
+    assert torch.allclose(y[..., 1:3].norm(dim=-1), x.clamp(-4, 4)[..., 1:3].norm(dim=-1), atol=1e-4)
+
+
 def test_augment_identity_and_mirror():
     x = torch.randn(8, 200, 6)
-    off = Augment(rot_deg=0, mirror_p=0, scale=(1, 1), shift=0, noise_acc_g=0, noise_gyro_dps=0)
+    off = Augment(rot_deg=0, roll_deg=0, mirror_p=0, scale=(1, 1), shift=0, noise_acc_g=0,
+                  noise_gyro_dps=0)
     assert torch.allclose(off(x), x.clamp(-8, 8))
-    flip = Augment(rot_deg=0, mirror_p=1, scale=(1, 1), shift=0, noise_acc_g=0, noise_gyro_dps=0)
+    flip = Augment(rot_deg=0, roll_deg=0, mirror_p=1, scale=(1, 1), shift=0, noise_acc_g=0,
+                   noise_gyro_dps=0)
     sign = torch.tensor([1.0, -1.0, 1.0, -1.0, 1.0, -1.0])  # acc: flip y; gyro: flip x and z
     expected = torch.cat([(x[..., :3] * sign[:3]).clamp(-8, 8), x[..., 3:] * sign[3:]], dim=-1)
     assert torch.allclose(flip(x), expected)

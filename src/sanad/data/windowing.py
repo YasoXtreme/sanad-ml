@@ -3,8 +3,10 @@
 Device rule (the firmware must implement the same thing):
   1. Armed: wait until |a| >= threshold (|a| from acceleration already clipped to +-8 g).
   2. Peak = the highest |a| in the next PEAK_SEARCH samples (0.5 s), starting at the crossing.
-  3. Window = 2.5 s before the peak to 1.5 s after it (PRE + POST = 200 samples at 50 Hz).
-  4. Disarmed until the window has ended (peak + 1.5 s), then armed again.
+  3. Until the window is complete (peak + 1.5 s), a strictly higher |a| moves the peak there and
+     restarts the 1.5 s wait. So a stumble just before the impact can't hide the impact itself.
+  4. Window = 2.5 s before the final peak to 1.5 s after it (PRE + POST = 200 samples at 50 Hz).
+     Run the model, then arm again.
 
 Labels:
   1  -> trigger in a fall recording whose peak is within +-MATCH_S of the labelled impact
@@ -48,6 +50,12 @@ def find_triggers(amag: np.ndarray, threshold: float) -> list[int]:
         start = int(above[k])
         seg = amag[start : min(start + PEAK_SEARCH, n)]
         p = start + int(np.argmax(seg))
+        while True:  # a higher peak before the window completes takes over
+            nxt = amag[p + 1 : min(p + POST, n)]
+            higher = np.flatnonzero(nxt > amag[p])
+            if not len(higher):
+                break
+            p = p + 1 + int(higher[0])
         peaks.append(p)
         i = p + POST  # disarmed until the window ends
     return peaks

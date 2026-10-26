@@ -10,8 +10,8 @@ stages:
       nfiles: 15351
     - path: src/sanad/data/harmonize.py
       hash: md5
-      md5: 55681cc1463abeb59e2e66f17e06652a
-      size: 6801
+      md5: 12f0bb399414c870361696a07d918571
+      size: 7734
     - path: src/sanad/data/loaders/weda_fall.py
       hash: md5
       md5: 55d2f0ed82e34f53e8078188b5bf2568
@@ -31,8 +31,8 @@ stages:
       nfiles: 24
     - path: src/sanad/data/harmonize.py
       hash: md5
-      md5: 55681cc1463abeb59e2e66f17e06652a
-      size: 6801
+      md5: 12f0bb399414c870361696a07d918571
+      size: 7734
     - path: src/sanad/data/loaders/pamap2.py
       hash: md5
       md5: 8a92e2a18b5f429f38c651329d3a49a8
@@ -42,3 +42,24 @@ stages:
       hash: md5
       md5: 0fd523f68582dda23af4e859f1b78b43
       size: 54289015
+  prepare_fallalld:
+    cmd: uv run --no-sync python -I -m sanad.data.prepare fallalld
+    deps:
+    - path: data/raw/fallalld
+      hash: md5
+      md5: e8bbafb0d54fa8cb66a17d0ec6428839.dir
+      size: 1105836329
+      nfiles: 26420
+    - path: src/sanad/data/harmonize.py
+      hash: md5
+      md5: 12f0bb399414c870361696a07d918571
+      size: 7734
+    - path: src/sanad/data/loaders/fallalld.py
+      hash: md5
+      md5: a63a2283b03933da0d5bbf186fe4d7f7
+      size: 5546
+    outs:
+    - path: data/interim/fallalld.parquet
+      hash: md5
+      md5: 075e5ca6640a87fbe78be10488ae8a78
+      size: 71080818

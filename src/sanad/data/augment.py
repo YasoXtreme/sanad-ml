@@ -27,9 +27,21 @@ def random_rotations(n: int, max_deg: float, device=None, generator=None) -> tor
     return eye + s * k + (1 - c) * (k @ k)
 
 
+def roll_rotations(n: int, max_deg: float, device=None, generator=None) -> torch.Tensor:
+    """(n, 3, 3) rotations about the forearm (x) axis by angles uniform in [-max_deg, max_deg]."""
+    ang = (torch.rand(n, device=device, generator=generator) * 2 - 1) * math.radians(max_deg)
+    c, s = torch.cos(ang), torch.sin(ang)
+    r = torch.zeros(n, 3, 3, device=device)
+    r[:, 0, 0] = 1
+    r[:, 1, 1], r[:, 1, 2] = c, -s
+    r[:, 2, 1], r[:, 2, 2] = s, c
+    return r
+
+
 @dataclass
 class Augment:
     rot_deg: float = 25.0  # band mounted slightly differently / strap rotated
+    roll_deg: float = 180.0  # band slid around the wrist; FallAllD's roll is unknown per subject
     mirror_p: float = 0.5  # mirror-image motion (e.g. falling left instead of right)
     scale: tuple[float, float] = (0.9, 1.1)  # sensor gain differences
     shift: int = 10  # +-0.2 s jitter of the detected peak
@@ -43,6 +55,8 @@ class Augment:
         acc, gyro = x[..., :3], x[..., 3:]
 
         rot = random_rotations(b, self.rot_deg, dev, generator)  # proper rotation: same for both
+        if self.roll_deg:
+            rot = rot @ roll_rotations(b, self.roll_deg, dev, generator)
         acc = acc @ rot.transpose(1, 2)
         gyro = gyro @ rot.transpose(1, 2)
 
