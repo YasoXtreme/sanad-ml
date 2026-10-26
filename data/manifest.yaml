@@ -1,0 +1,131 @@
+# Dataset registry for Sanad ML.
+# access: auto   -> src/sanad/data/download.py fetches it into data/raw/<id>/
+#         manual -> you download it yourself (login needed) and drop the file into data/raw/<id>/
+# role:   train     -> falls + daily activities used for teacher and student
+#         negatives -> daily activities only (no falls), labelled by the teacher during distillation
+#         test      -> never trained on; external check only
+# sha256 is filled in on first download and then verified on every later run.
+# Raw data never goes into git (public repo, mixed licenses); DVC backs it up to D:\dvc-store\sanad-ml.
+
+datasets:
+  fallalld:
+    title: "FallAllD: open dataset of human falls and activities of daily living"
+    tier: 1
+    role: train
+    access: manual
+    url: https://ieee-dataport.org/open-access/fallalld-comprehensive-dataset-human-falls-and-activities-daily-living
+    doi: 10.21227/bnya-mn34
+    license: "IEEE DataPort open access (free IEEE account login); cite doi:10.1109/JSEN.2020.3018335"
+    files:
+      - name: FallAllD.zip  # listed as "FallAllD__zip_zip", ~401 MB; save into data/raw/fallalld/
+        sha256: null
+    placement: [waist, wrist, neck]  # only the wrist logger is used
+    sensors: {acc: "LSM9DS1 +-8 g", gyro: "LSM9DS1 +-2000 dps", mag: "80 Hz", baro: "10 Hz"}
+    rate_hz: 238
+    subjects: 15
+    notes: "Each recording 20 s with the fall impact around t = 10 s. Check counts-to-units scaling against the bundled scripts."
+
+  weda_fall:
+    title: "WEDA-FALL: Wrist Elderly Daily Activity and Fall dataset"
+    tier: 1
+    role: train  # elderly participants (no falls) held out as the elderly false-alarm test
+    access: auto
+    url: https://github.com/joaojtmarques/WEDA-FALL
+    license: "not stated in the repository; cite Marques & Moreno, Sensors 2023"
+    files:
+      - name: WEDA-FALL-main.zip
+        url: https://github.com/joaojtmarques/WEDA-FALL/archive/refs/heads/main.zip
+        sha256: null
+    placement: [wrist]
+    sensors: {acc: "Fitbit Sense", gyro: "Fitbit Sense", orientation: "Fitbit Sense"}
+    rate_hz: 50
+    subjects: 25  # 14 young (falls F01-F08 + ADLs D01-D11), 11 aged 77-95 (ADLs only)
+    notes: "Uses dataset/50Hz only. fall_timestamps.csv gives fall phases (manual, may contain errors). Units to confirm on load."
+
+  pamap2:
+    title: "PAMAP2 Physical Activity Monitoring"
+    tier: 2
+    role: negatives
+    access: auto
+    url: https://archive.ics.uci.edu/dataset/231/pamap2+physical+activity+monitoring
+    license: CC BY 4.0
+    files:
+      - name: pamap2+physical+activity+monitoring.zip  # 656 MB
+        url: https://archive.ics.uci.edu/static/public/231/pamap2+physical+activity+monitoring.zip
+        sha256: null
+    placement: [wrist (dominant arm), chest, ankle]  # hand IMU only
+    sensors: {acc: "+-16 g in m/s^2 (use this one; the +-6 g set saturates)", gyro: "rad/s"}
+    rate_hz: 100
+    subjects: 9
+    notes: "Space-separated .dat, 54 columns, NaN for missing. Dominant wrist, so mirror to left where needed."
+
+  umafall:
+    title: "UMAFall: UMA ADL FALL dataset"
+    tier: 3
+    role: test
+    access: auto
+    url: https://figshare.com/articles/dataset/UMA_ADL_FALL_Dataset_zip/4214283
+    license: "CC BY 4.0 (to confirm on download; figshare blocks automated page reads)"
+    files:
+      - name: UMAFall_Dataset.zip
+        sha256: null
+    placement: [wrist, waist, chest, ankle, thigh (phone)]
+    rate_hz: 20  # SensorTag nodes; too slow for impact peaks, external test only
+    subjects: 19
+
+  erciyes:
+    title: "Simulated Falls and Daily Living Activities (Erciyes University)"
+    tier: 3
+    role: test
+    access: auto
+    url: https://archive.ics.uci.edu/dataset/455/simulated+falls+and+daily+living+activities+data+set
+    license: CC BY 4.0
+    files:
+      - name: simulated+falls+and+daily+living+activities+data+set.zip  # contains Tests.rar (1.2 GB), needs 7-Zip
+        url: https://archive.ics.uci.edu/static/public/455/simulated+falls+and+daily+living+activities+data+set.zip
+        sha256: null
+    placement: [head, chest, waist, wrist, thigh, ankle]  # Xsens MTw
+    rate_hz: 25
+    subjects: 17  # 20 falls + 16 ADLs, 5 repetitions each
+
+  nandi_geriatric:
+    title: "IMU + heart-rate dataset for geriatric fall detection (custom wrist device)"
+    tier: 3
+    role: test
+    access: auto
+    url: https://zenodo.org/records/10013090
+    doi: 10.5281/zenodo.10013090
+    license: CC BY 4.0
+    files:
+      - name: full_dataset.zip  # 26.4 MB
+        url: https://zenodo.org/records/10013090/files/full_dataset.zip?download=1
+        md5: 65024cad5bd1c20be22c03ec78e50b79
+        sha256: null
+    placement: [left wrist]
+    sensors: {acc: MPU6500, gyro: MPU6500, mag: GY-273, hr: MAX30102}
+    rate_hz: 20
+    subjects: 41  # ages ~20-47 despite the title; 8 falls + 16 ADLs x 5 trials
+
+  upfall:
+    title: "UP-Fall Detection dataset"
+    tier: 3
+    role: test
+    access: manual
+    url: https://sites.google.com/up.edu.mx/har-up/
+    license: "to confirm"
+    placement: [wrist, neck, waist, pocket, ankle]
+    rate_hz: 18
+    subjects: 17
+
+  capture24:
+    title: "Capture-24: activity tracker dataset for human activity recognition"
+    tier: 3
+    role: test  # free-living false-alarm rate of the trigger stage only (accelerometer only)
+    access: auto
+    url: https://ora.ox.ac.uk/objects/uuid:99d7c092-d865-4a19-b096-cc16440cd001
+    doi: 10.5287/bodleian:NGx0JOMP5
+    license: "to confirm on the ORA record"
+    placement: [dominant wrist]  # Axivity AX3, accelerometer only
+    rate_hz: 100
+    subjects: 151
+    notes: "~6 GB. Accelerometer only, so it is used to estimate trigger false alarms per day, not to train the CNN."

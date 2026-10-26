@@ -1,0 +1,58 @@
+[project]
+name = "sanad-ml"
+version = "0.1.0"
+description = "Fall-detection models for Sanad, a wrist band for elderly people living alone: a large teacher distilled into an int8 student for the Raspberry Pi Pico 2 W."
+readme = "README.md"
+authors = [
+    { name = "Fares Hassan" },
+    { name = "Omar Ahmed" },
+    { name = "Yassen Mohamed" },
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "pyarrow",
+    "scikit-learn",
+    "matplotlib",
+    "pyyaml",
+    "requests",
+    "tqdm",
+]
+
+[dependency-groups]
+# GPU training (teacher + distilled student).
+train = ["torch>=2.9", "tensorboard", "torchinfo"]
+# Turning the student into an int8 .tflite for TFLite Micro, and the RF baseline into C.
+# TensorFlow runs CPU-only on Windows, which is all the conversion needs.
+export = ["tensorflow==2.21.*", "emlearn"]
+# Versioning raw data, processed windows, and model files (stored on D:, not GitHub).
+data = ["dvc"]
+dev = ["jupyterlab", "ipykernel", "pytest", "ruff"]
+
+[tool.uv]
+default-groups = ["train", "export", "data", "dev"]
+
+[tool.uv.sources]
+# RTX 5060 (Blackwell, sm_120) needs a CUDA 12.8+ build of PyTorch.
+torch = [{ index = "pytorch-cu130" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sanad"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

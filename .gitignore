@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Data and models live in DVC (backed up to D:\dvc-store\sanad-ml), never in git.
+# DVC writes its own .gitignore files next to tracked outputs; these are a safety net.
+/data/raw/
+/data/interim/
+/data/processed/
+/models/
+/runs/
+/tmp/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

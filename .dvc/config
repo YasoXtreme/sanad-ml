@@ -1,0 +1,6 @@
+[core]
+    remote = store
+    autostage = true
+    analytics = false
+['remote "store"']
+    url = D:\dvc-store\sanad-ml
