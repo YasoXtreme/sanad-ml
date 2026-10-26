@@ -81,10 +81,17 @@ def run_fold(k, train_recs, test_recs, elderly, cfg, tcfg, dev, log) -> dict:
     log(f"  T:ensemble: test spec@95 {res['test/T:ensemble']['spec_at_target']:.3f}")
 
     sc = cfg["student"]
-    runs = [("none", None, None)] + [
-        (f"{t}/{r}", teachers[t], rc) for t in teachers for r, rc in tcfg["recipes"].items()]
-    for name, teacher, rc in runs:
-        student = SanadTiny(widths=tuple(sc["widths"]), kernels=tuple(sc["kernels"]), dense=sc["dense"])
+    # one student size (cfg["student"]) unless the tournament config lists several: "<name>@<size>"
+    sizes = tcfg.get("students") or {"": {k: sc[k] for k in ("widths", "kernels", "dense")}}
+    runs = []
+    for size, ss in sizes.items():
+        sfx = f"@{size}" if size else ""
+        runs.append((f"none{sfx}", None, None, ss))
+        runs += [(f"{t}/{r}{sfx}", teachers[t], rc, ss)
+                 for t in teachers for r, rc in tcfg["recipes"].items()]
+    for name, teacher, rc, ss in runs:
+        student = SanadTiny(widths=tuple(ss["widths"]), kernels=tuple(ss["kernels"]), dense=ss["dense"])
+        res["params"][f"S:{name}"] = count_params(student)
         t0 = time.time()
         h = train(student, fd.norm, fd.xf, fd.yf, fd.xv, fd.yv, TrainConfig(
             epochs=sc["epochs"], lr=sc["lr"], batch_size=sc["batch_size"], patience=sc["patience"],
@@ -140,8 +147,9 @@ def to_markdown(df: pd.DataFrame, params: dict) -> str:
     cols = ["Rank", "Contender", "Points", "Params"] + [m[2] for m in METRICS]
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for _, r in df.iterrows():
+        p = params.get(r.contender, 11825)
         cells = [str(r["rank"]), r.contender.split(":", 1)[1], f"{r.points:g}",
-                 f"{params.get(r.contender, 0) / 1e6:.2f} M" if r.contender.startswith("T:") else "11.8 k"]
+                 f"{p / 1e6:.2f} M" if p >= 1e6 else f"{p / 1e3:.1f} k"]
         for _, _, label, _ in METRICS:
             v, s = r[label], r[f"{label} sd"]
             pct = label not in ("AUC",) and "alarms" not in label
