@@ -183,7 +183,7 @@ falls the trigger missed count as misses. Window metrics score only the windows 
 - Decision thresholds picked on validation people for 95 % sensitivity, then applied unchanged to test people.
 - Augmentation: random rotation (±25°), any roll around the forearm, left/right mirroring, gain, time shift, noise.
 {final_md}"""
-    (REPORTS / "results.md").write_text(md, encoding="utf-8")
+    (REPORTS / "results.md").write_text(md, encoding="utf-8", newline="\n")
     print(f"wrote {REPORTS / 'results.md'} and {fig_path}")
     return 0
 
