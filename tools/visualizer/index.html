@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sanad Live</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --text: rgba(205, 225, 255, 0.82);
+    --dim: rgba(160, 190, 235, 0.5);
+    --line: rgba(160, 200, 255, 0.22);
+    --live: #7fd3ff;
+    --warn: #ffc56b;
+    --bad: #ff7a85;
+    --heart: #ff8fa3;
+  }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body {
+    color: var(--text);
+    font: 13px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas#gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+
+  #hud { position: fixed; top: 16px; left: 16px; right: 16px; pointer-events: none; transition: opacity 0.8s; }
+  .panel {
+    pointer-events: auto; display: inline-flex; flex-direction: column; gap: 8px; max-width: 100%;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+  }
+  .brand { font-size: 14px; letter-spacing: 0.04em; color: var(--text); }
+  .brand .ar { font-size: 17px; margin-inline-end: 6px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button, input {
+    font: inherit; color: var(--text); background: transparent; border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 11px; outline: none;
+  }
+  button { cursor: pointer; }
+  button:hover, button:focus-visible, input:focus { border-color: rgba(190, 220, 255, 0.6); }
+  button.on { border-color: var(--live); color: #fff; box-shadow: 0 0 12px rgba(127, 211, 255, 0.35); }
+  input { width: 150px; }
+  #status::before {
+    content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 7px; background: var(--dim); vertical-align: 1px;
+  }
+  #status[data-state="live"]::before { background: var(--live); box-shadow: 0 0 8px var(--live); }
+  #status[data-state="connecting"]::before, #status[data-state="reconnecting"]::before { background: var(--warn); }
+  #status[data-state="error"]::before { background: var(--bad); }
+  #stats, .keys { color: var(--dim); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #stats:empty { display: none; }
+  .demo-only { display: none; }
+  body.demo .demo-only { display: block; }
+
+  #comment {
+    position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    color: var(--dim); font-size: 12px; opacity: 0; transition: opacity 0.6s; pointer-events: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #comment.show { opacity: 1; }
+  #rec {
+    position: fixed; top: 18px; right: 20px; color: var(--bad); font-size: 12px; letter-spacing: 0.1em;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  #rec.show { opacity: 1; animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  #bpm {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); font-size: 20px;
+    letter-spacing: 0.05em; color: var(--text); opacity: 0; transition: opacity 1.2s; pointer-events: none;
+    font-variant-numeric: tabular-nums;
+  }
+  #bpm.show { opacity: 0.85; }
+  #bpm small { font-size: 12px; color: var(--dim); }
+  #bpm .heart { color: var(--heart); display: inline-block; }
+  #bpm.beat .heart { animation: beat 0.45s ease-out; }
+  @keyframes beat { 0% { transform: scale(1); } 20% { transform: scale(1.35); } 100% { transform: scale(1); } }
+
+  #drop {
+    position: fixed; inset: 16px; border: 1px dashed var(--line); border-radius: 16px; display: grid;
+    place-items: center; color: var(--dim); opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  body.dragging #drop { opacity: 1; }
+
+  body.idle #hud, body.hud-off #hud { opacity: 0; }
+  body.idle #hud .panel, body.hud-off #hud .panel { pointer-events: none; }
+  body.idle { cursor: none; }
+  body.hud-off #bpm.show { opacity: 0.6; }
+
+  @media (max-width: 520px) {
+    input { width: 120px; }
+    .keys { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.min.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud">
+  <div class="panel">
+    <div class="brand"><span class="ar" lang="ar">سند</span>Sanad live</div>
+    <div class="row">
+      <button id="btn-wifi" title="Connect to the band over Wi-Fi">Wi-Fi</button>
+      <input id="host" spellcheck="false" autocomplete="off" aria-label="Band address" placeholder="192.168.42.1">
+    </div>
+    <div class="row">
+      <button id="btn-usb" title="Connect over the USB cable (Chrome / Edge)">USB</button>
+      <button id="btn-demo" title="Built-in demo band, no hardware">Demo</button>
+      <button id="btn-stop">Stop</button>
+    </div>
+    <div id="status" data-state="idle">Not connected</div>
+    <div id="stats"></div>
+    <div class="keys">F fullscreen · H hide · R recentre · C record · drop a CSV to replay</div>
+    <div class="keys demo-only">Demo: Space fall · B finger · J Wi-Fi jitter</div>
+  </div>
+</div>
+
+<div id="rec">● REC</div>
+<div id="comment"></div>
+<div id="bpm"><span class="heart">♥</span> <span id="bpm-val">··</span> <small>bpm</small></div>
+<div id="drop">Drop a recording to replay it</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

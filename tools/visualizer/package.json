@@ -1,0 +1,9 @@
+{
+  "name": "sanad-visualizer",
+  "private": true,
+  "type": "module",
+  "description": "Live breathing visualizer for the Sanad band (no dependencies, no build step)",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}

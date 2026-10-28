@@ -55,6 +55,10 @@ the cloud (Express + MongoDB, Telegram bot). Design history is in the claude.ai 
   never commit them, credit "Copyright © 2022, University of Oxford", no commercial use.
 - Training needs the GPU: the laptop powers the RTX 5060 off on battery (plug in the charger).
   Scripts that read downloaded data run with `python -I`.
+- Firmware (PlatformIO, Arduino-Pico core): `~/.platformio/penv/Scripts/pio.exe run -d firmware/<version>`
+  (`v0_1_sensor_test` = wiring test, `v0_2_wifi_stream` = Wi-Fi/USB 50 Hz stream). Each folder has a README.
+- Live visualizer: `uv run python -I tools/visualizer/serve.py` (http://localhost:8000; Wi-Fi, USB or demo band);
+  tests `node --test "tools/visualizer/test/*.test.js"` (no npm packages; three.js is vendored).
 
 ## Data
 Registry: `data/manifest.yaml`. Main sets: FallAllD (wrist, 238 Hz; manual download, IEEE login),
