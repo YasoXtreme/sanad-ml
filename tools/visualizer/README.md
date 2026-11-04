@@ -42,6 +42,18 @@ This opens <http://localhost:8000> in your browser. Use **Chrome or Edge** (USB 
 The status line shows the sample rate (should be ~50 Hz), how far behind live it plays (the jitter buffer,
 normally 120–150 ms), dropped samples and the current |a|.
 
+## Phone alerts (proof of concept)
+
+Every impact flash also sends a push notification to a phone through [ntfy.sh](https://ntfy.sh) (free, no
+account). It's only the trigger (|a| > 2.30 g), not the fall model, and at most one alert per 10 s.
+
+1. Install the **ntfy** app (Android / iPhone) and subscribe to the topic `serve.py` prints at startup
+   (`sanad-...`; it's random, saved in `tools/visualizer/.alert_topic`, not in git).
+2. Shake or tap the band hard (or **Demo** + Space). The page shows "📱 alert sent to phone".
+
+The laptop needs internet. Turn it off with `serve.py --no-alerts`. The real band will alert through the
+cloud server and the Telegram bot instead.
+
 ## Keys
 
 | Key | |
