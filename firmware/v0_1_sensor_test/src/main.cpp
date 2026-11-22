@@ -1,7 +1,9 @@
 // Sanad firmware v0.1: sensor wiring test.
 //
 // Reads the MPU-6050 (accel ±16 g, gyro ±2000 °/s, 50 Hz) and the MAX30102 (red + IR, 50 Hz)
-// over I2C0 (SDA = GP4, SCL = GP5) and prints the values over USB serial. No libraries,
+// and prints the values over USB serial. Band v2b wiring (sanad-3d): each sensor on its own bus,
+// MPU-6050 on I2C1 (SDA = GP26 pin 31, SCL = GP27 pin 32), MAX30102 on I2C0 (SDA = GP4 pin 6,
+// SCL = GP5 pin 7). No libraries,
 // just register reads, so every failure points at wiring and not at a library.
 //
 // Serial commands (type a letter in the monitor):
@@ -16,6 +18,9 @@
 
 constexpr uint8_t MPU_ADDR = 0x68;  // AD0 low (default on most modules)
 constexpr uint8_t MAX_ADDR = 0x57;
+constexpr uint8_t MPU_SDA = 26, MPU_SCL = 27;  // I2C1
+constexpr uint8_t MAX_SDA = 4, MAX_SCL = 5;    // I2C0
+constexpr uint8_t PIN_MOTOR = 15;              // GP15 = pin 20: held off here
 constexpr uint32_t SAMPLE_US = 20000;  // 50 Hz
 constexpr uint32_t FINGER_IR = 50000;  // IR above this = something is on the sensor
 
@@ -29,34 +34,44 @@ uint32_t red = 0, ir = 0;              // 18-bit MAX30102 counts
 uint8_t maxNew = 0;                    // new MAX30102 samples in the last read
 
 // ---------- I2C helpers ----------
+// Each sensor is on its own bus; the address says which.
+TwoWire &bus(uint8_t addr) { return addr == MAX_ADDR ? Wire : Wire1; }
+
 bool writeReg(uint8_t addr, uint8_t reg, uint8_t val) {
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  Wire.write(val);
-  return Wire.endTransmission() == 0;
+  TwoWire &w = bus(addr);
+  w.beginTransmission(addr);
+  w.write(reg);
+  w.write(val);
+  return w.endTransmission() == 0;
 }
 
 bool readRegs(uint8_t addr, uint8_t reg, uint8_t *buf, size_t n) {
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  if (Wire.endTransmission(false) != 0) return false;
-  if (Wire.requestFrom(addr, n) != n) return false;
-  for (size_t i = 0; i < n; i++) buf[i] = Wire.read();
+  TwoWire &w = bus(addr);
+  w.beginTransmission(addr);
+  w.write(reg);
+  if (w.endTransmission(false) != 0) return false;
+  if (w.requestFrom(addr, n) != n) return false;
+  for (size_t i = 0; i < n; i++) buf[i] = w.read();
   return true;
 }
 
-void i2cScan() {
-  Serial.print("# I2C scan:");
+void scanBus(TwoWire &w, const char *name, const char *expect, const char *hint) {
+  Serial.printf("# I2C scan %s:", name);
   int found = 0;
   for (uint8_t a = 1; a < 127; a++) {
-    Wire.beginTransmission(a);
-    if (Wire.endTransmission() == 0) {
+    w.beginTransmission(a);
+    if (w.endTransmission() == 0) {
       Serial.printf(" 0x%02X", a);
       found++;
     }
   }
-  if (found == 0) Serial.print(" NOTHING FOUND -> check 3V3, GND, SDA=GP4, SCL=GP5");
-  Serial.println("   (expected: 0x57 = MAX30102, 0x68 = MPU-6050)");
+  if (found == 0) Serial.print(hint);
+  Serial.printf("   (expected: %s)\n", expect);
+}
+
+void i2cScan() {
+  scanBus(Wire1, "I2C1", "0x68 = MPU-6050", " NOTHING FOUND -> check 3V3, GND, SDA=GP26 (pin 31), SCL=GP27 (pin 32)");
+  scanBus(Wire, "I2C0", "0x57 = MAX30102", " NOTHING FOUND -> check 3V3, GND, SDA=GP4 (pin 6), SCL=GP5 (pin 7)");
 }
 
 // ---------- MPU-6050 ----------
@@ -168,12 +183,18 @@ void handleSerial() {
 }
 
 void setup() {
+  pinMode(PIN_MOTOR, OUTPUT);  // keep the coin motor off
+  digitalWrite(PIN_MOTOR, LOW);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   while (!Serial && millis() < 3000) delay(10);  // give the USB monitor a moment to attach
 
-  Wire.setSDA(4);
-  Wire.setSCL(5);
+  Wire1.setSDA(MPU_SDA);  // I2C1: MPU-6050
+  Wire1.setSCL(MPU_SCL);
+  Wire1.begin();
+  Wire1.setClock(400000);
+  Wire.setSDA(MAX_SDA);  // I2C0: MAX30102
+  Wire.setSCL(MAX_SCL);
   Wire.begin();
   Wire.setClock(400000);
 

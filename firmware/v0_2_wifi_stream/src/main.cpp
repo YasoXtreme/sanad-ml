@@ -1,6 +1,6 @@
 // Sanad firmware v0.2: sensors streamed over Wi-Fi (WebSocket) and USB.
 //
-// Same sensors and wiring as v0.1. New: every sample also goes over Wi-Fi to the laptop visualizer
+// Same sensors and band v2b wiring as v0.1 (MPU-6050 on I2C1, MAX30102 on I2C0). New: every sample also goes over Wi-Fi to the laptop visualizer
 // (ws://<band>/ws), and samples come from the MPU's FIFO with a counter `seq` (gaps = lost samples).
 //
 // Serial commands (type a letter in the monitor; a WebSocket client can send the same letters):
@@ -160,6 +160,8 @@ static void updateLed() {
 }
 
 void setup() {
+  pinMode(PIN_MOTOR, OUTPUT);  // the coin motor stays off until the alert firmware drives it
+  digitalWrite(PIN_MOTOR, LOW);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   while (!Serial && millis() < 3000) delay(10);  // give the USB monitor a moment to attach

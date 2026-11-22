@@ -1,4 +1,5 @@
-// Sanad firmware v0.2: MPU-6050 + MAX30102 over I2C0 (SDA = GP4, SCL = GP5).
+// Sanad firmware v0.2: MPU-6050 on I2C1 (SDA = GP26, SCL = GP27) + MAX30102 on I2C0 (SDA = GP4,
+// SCL = GP5), the band v2b wiring.
 //
 // New in v0.2: samples come from the MPU's FIFO (SANAD_USE_FIFO 1), so the MPU's own 50 Hz clock
 // sets the timing, as in docs/device_data_format.md. Each sample gets a counter `seq`; when samples
@@ -44,35 +45,44 @@ static bool morePending = false;   // FIFO held more than one batch at the last 
 static uint8_t oddCounts = 0;      // FIFO count not a multiple of 12 this many polls in a row
 
 // ---------- I2C helpers (from v0.1) ----------
+// Each sensor is on its own bus; the address says which.
+static TwoWire &bus(uint8_t addr) { return addr == MAX_ADDR ? Wire : Wire1; }
+
 static bool writeReg(uint8_t addr, uint8_t reg, uint8_t val) {
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  Wire.write(val);
-  return Wire.endTransmission() == 0;
+  TwoWire &w = bus(addr);
+  w.beginTransmission(addr);
+  w.write(reg);
+  w.write(val);
+  return w.endTransmission() == 0;
 }
 
 static bool readRegs(uint8_t addr, uint8_t reg, uint8_t *buf, size_t n) {
-  Wire.beginTransmission(addr);
-  Wire.write(reg);
-  if (Wire.endTransmission(false) != 0) return false;
-  if (Wire.requestFrom(addr, n) != n) return false;
-  for (size_t i = 0; i < n; i++) buf[i] = Wire.read();
+  TwoWire &w = bus(addr);
+  w.beginTransmission(addr);
+  w.write(reg);
+  if (w.endTransmission(false) != 0) return false;
+  if (w.requestFrom(addr, n) != n) return false;
+  for (size_t i = 0; i < n; i++) buf[i] = w.read();
   return true;
 }
 
-static void i2cScan() {
+static void scanBus(TwoWire &w, const char *name, uint8_t expect, const char *hint) {
   char line[160];
-  int len = snprintf(line, sizeof(line), "I2C scan:");
+  int len = snprintf(line, sizeof(line), "I2C scan %s:", name);
   int found = 0;
   for (uint8_t a = 1; a < 127; a++) {
-    Wire.beginTransmission(a);
-    if (Wire.endTransmission() == 0 && len < (int)sizeof(line) - 8) {
+    w.beginTransmission(a);
+    if (w.endTransmission() == 0 && len < (int)sizeof(line) - 8) {
       len += snprintf(line + len, sizeof(line) - len, " 0x%02X", a);
       found++;
     }
   }
-  logMsg("%s%s   (expected: 0x57 = MAX30102, 0x68 = MPU-6050)", line,
-         found ? "" : " NOTHING FOUND -> check 3V3, GND, SDA=GP4, SCL=GP5");
+  logMsg("%s%s   (expected: 0x%02X)", line, found ? "" : hint, expect);
+}
+
+static void i2cScan() {
+  scanBus(Wire1, "I2C1 (MPU-6050)", MPU_ADDR, " NOTHING FOUND -> check 3V3, GND, SDA=GP26 (pin 31), SCL=GP27 (pin 32)");
+  scanBus(Wire, "I2C0 (MAX30102)", MAX_ADDR, " nothing (optional) -> SDA=GP4 (pin 6), SCL=GP5 (pin 7)");
 }
 
 // ---------- MPU-6050 ----------
@@ -136,10 +146,13 @@ static void mpuLost() {
 }
 
 // ---------- MAX30102 (from v0.1) ----------
-static bool initMax() {
+// The MAX30102 is optional: the MPU-6050 streams without it (ir/red read 0). `quiet` = a background
+// retry, so a missing chip is reported once, not every few seconds.
+static bool initMax(bool quiet = false) {
+  maxIr = maxRed = 0;  // never leave old finger values in the stream
   uint8_t id;
   if (!readRegs(MAX_ADDR, 0xFF, &id, 1)) {
-    logMsg("MAX30102: no answer at 0x57");
+    if (!quiet) logMsg("MAX30102: no answer at 0x57 (optional: MPU-6050 streams without it, ir/red = 0)");
     return false;
   }
   logMsg("MAX30102 PART_ID = 0x%02X %s", id, id == 0x15 ? "(ok)" : "(expected 0x15)");
@@ -176,14 +189,19 @@ static bool readMax() {
 static void pollMax() {
   if (maxOk && !readMax()) {
     maxOk = false;
-    logMsg("MAX30102 LOST (loose wire?)");
+    maxIr = maxRed = 0;
+    logMsg("MAX30102 LOST (loose wire?) - MPU-6050 keeps streaming, ir/red = 0");
   }
 }
 
 // ---------- public ----------
 void sensorsBegin() {
-  Wire.setSDA(PIN_SDA);
-  Wire.setSCL(PIN_SCL);
+  Wire1.setSDA(MPU_SDA);  // I2C1: MPU-6050
+  Wire1.setSCL(MPU_SCL);
+  Wire1.begin();
+  Wire1.setClock(I2C_HZ);
+  Wire.setSDA(MAX_SDA);  // I2C0: MAX30102
+  Wire.setSCL(MAX_SCL);
   Wire.begin();
   Wire.setClock(I2C_HZ);
   sensorsStart();
@@ -197,14 +215,18 @@ void sensorsStart() {
 }
 
 void sensorsRetry() {
-  static uint32_t lastRetry = 0;
-  if ((mpuOk && maxOk) || millis() - lastRetry < 3000) return;
-  lastRetry = millis();
-  if (!mpuOk) {
+  static uint32_t lastMpuTry = 0, lastMaxTry = 0;
+  uint32_t now = millis();
+  if (!mpuOk && now - lastMpuTry >= 3000) {
+    lastMpuTry = now;
     mpuOk = initMpu();
     if (mpuOk) fifoRestart(true);  // the time it was missing shows as a seq gap
   }
-  if (!maxOk) maxOk = initMax();
+  // The MAX30102 is optional: look for it every 10 s, silently, so an absent chip costs nothing.
+  if (!maxOk && now - lastMaxTry >= 10000) {
+    lastMaxTry = now;
+    maxOk = initMax(true);
+  }
 }
 
 void sensorsRestartStream() {

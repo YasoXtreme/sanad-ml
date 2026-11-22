@@ -4,23 +4,29 @@ Reads the MPU-6050 and the MAX30102 and prints their values over USB. Nothing el
 
 ## 1. Wiring
 
-Unplug the Pico from USB while you wire. Both sensors share **one I2C bus**: all four wires are shared.
+This is the **band v2b wiring** from the `sanad-3d` assembly guide (step 04). Unplug the Pico from USB
+while you wire. Each sensor has **its own I2C bus**: the MPU-6050 on I2C1, the MAX30102 on I2C0. Only
+3.3 V is shared. So one sensor missing or stuck can't block the other.
 
 Pico pin numbers count from **pin 1 = top-left when the USB port points up** (look for the small "1" or
 square pad), down the left side to pin 20, then from pin 21 at the bottom-right up to pin 40 at the top-right.
 
-| Signal | Pico 2 W pin | MPU-6050 | MAX30102 |
-|---|---|---|---|
-| 3.3 V power | **pin 36 (3V3 OUT)** | VCC | VIN |
-| Ground | **pin 38 (GND)** (or any GND) | GND | GND |
-| I2C data | **pin 6 (GP4, I2C0 SDA)** | SDA | SDA |
-| I2C clock | **pin 7 (GP5, I2C0 SCL)** | SCL | SCL |
-| (leave unconnected) | | XDA, XCL, AD0, INT | INT, IRD, RD |
+| Signal | MPU-6050 → Pico 2 W | MAX30102 → Pico 2 W |
+|---|---|---|
+| 3.3 V power | VCC → **pin 36 (3V3 OUT)** | VIN → **pin 36 (3V3 OUT)** |
+| Ground | GND → **pin 33 (GND)** | GND → **pin 8 (GND)** |
+| I2C data | SDA → **pin 31 (GP26, I2C1 SDA)** | SDA → **pin 6 (GP4, I2C0 SDA)** |
+| I2C clock | SCL → **pin 32 (GP27, I2C1 SCL)** | SCL → **pin 7 (GP5, I2C0 SCL)** |
+| Interrupt (wired, unused so far) | INT → pin 34 (GP28) | INT → pin 9 (GP6) |
+| (leave unconnected) | XDA, XCL, AD0 | IRD, RD |
+
+The rest of the band, for reference (this firmware only holds the motor off): button GP14 (pin 19) and
+GND (pin 18); motor driver GP15 (pin 20) → 1 kΩ → transistor base.
 
 - Use **3V3 OUT (pin 36), not VBUS (pin 40) or VSYS (pin 39)**. The Pico's pins are 3.3 V only.
 - MPU-6050 AD0 unconnected = address 0x68 (the module pulls it low). Connect AD0 to 3.3 V only if you want 0x69.
 - Both modules already have pull-up resistors on SDA/SCL, so you need no extra resistors.
-- Breadboard: join the four shared lines on the breadboard rails, or twist/solder them together.
+- Breadboard: only 3.3 V is shared; join the two VIN/VCC wires on a rail.
 
 ## 2. Build and upload (VS Code + PlatformIO, like your ESP projects)
 
@@ -50,7 +56,8 @@ while the firmware runs. Type a letter + Enter in the monitor:
 Good startup output:
 
 ```
-# I2C scan: 0x57 0x68   (expected: 0x57 = MAX30102, 0x68 = MPU-6050)
+# I2C scan I2C1: 0x68   (expected: 0x68 = MPU-6050)
+# I2C scan I2C0: 0x57   (expected: 0x57 = MAX30102)
 # MPU-6050 WHO_AM_I = 0x68 (ok)
 # MPU-6050 init OK
 # MAX30102 PART_ID = 0x15 (ok)
@@ -79,8 +86,9 @@ acc[g] x=+0.01 y=-0.02 z=+1.00 |a|=1.00  gyro[dps] x=  +0.4 y=  -0.8 z=  +0.2  2
 |---|---|
 | No RP2350 drive appears | Charge-only USB cable (try another), or BOOTSEL released too early |
 | No COM port / blank monitor | Firmware not uploaded yet, or monitor opened before the Pico finished booting: close and reopen it, then type `s` |
-| `I2C scan: NOTHING FOUND` | 3V3/GND missing, or SDA and SCL swapped, or not on GP4/GP5 |
-| Only one address found | That sensor's wires (often its VCC or GND) or a cold solder joint on its header |
+| `I2C scan I2C1: NOTHING FOUND` | MPU-6050: 3V3/GND missing, SDA and SCL swapped, or not on GP26/GP27 (pins 31/32) |
+| `I2C scan I2C0: NOTHING FOUND` | MAX30102: 3V3/GND missing, SDA and SCL swapped, or not on GP4/GP5 (pins 6/7) |
+| A sensor found on the wrong bus | Its SDA/SCL went to the other sensor's pins: check the table above |
 | MPU WHO_AM_I is 0x70, 0x72 or 0x98 | Clone chip (MPU-6500-like). Usually works the same: check the gravity test above |
-| MAX30102 found but IR never rises | Check that the LED glows red; some purple boards have weak 1.8 V pull-ups: try a slower bus by changing `Wire.setClock(400000)` to `100000` |
+| MAX30102 found but IR never rises | Check that the LED glows red; some purple boards have weak 1.8 V pull-ups: try a slower bus by changing `Wire.setClock(400000)` (I2C0) to `100000` |
 | Values freeze / garbage | Long or loose jumper wires: keep I2C wires short (< 20 cm) |

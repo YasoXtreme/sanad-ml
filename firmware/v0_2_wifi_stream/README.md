@@ -16,7 +16,7 @@ presentation demo and for checking the sensors without a cable.
 | Commands | `h`, `r`, `s` | also `w` (Wi-Fi status), `a` (own network now), `j` (look for saved networks again) |
 | Status page | none | open `http://<band>/` in a browser |
 
-Wiring is **exactly the same as v0.1**: see [`../v0_1_sensor_test/README.md`](../v0_1_sensor_test/README.md).
+Wiring is **exactly the same as v0.1** (band v2b: MPU-6050 on I2C1 = GP26/GP27, MAX30102 on I2C0 = GP4/GP5): see [`../v0_1_sensor_test/README.md`](../v0_1_sensor_test/README.md).
 
 ## 1. Save your Wi-Fi networks (optional)
 
@@ -49,7 +49,8 @@ Good startup output (here with a saved phone hotspot in range):
 
 ```
 # Sanad v0.2.0 Wi-Fi stream. Commands: h = human view, r = raw 50 Hz CSV, s = rescan sensors, w = Wi-Fi status, a = own network now, j = join saved network again
-# I2C scan: 0x57 0x68   (expected: 0x57 = MAX30102, 0x68 = MPU-6050)
+# I2C scan I2C1 (MPU-6050): 0x68   (expected: 0x68)
+# I2C scan I2C0 (MAX30102): 0x57   (expected: 0x57)
 # MPU-6050 WHO_AM_I = 0x70 (not 0x68: MPU-6500-type clone, works the same)
 # MPU-6050 init OK (FIFO, MPU clock)
 # MAX30102 PART_ID = 0x15 (ok)
@@ -71,7 +72,7 @@ Type a letter + Enter in the monitor (a visualizer can send the same letters ove
 |---|---|
 | `h` | human view, 2 lines a second (default) |
 | `r` | raw CSV at 50 Hz on USB: `t_ms,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps,ir,red,seq` |
-| `s` | rescan the bus and re-initialise the sensors |
+| `s` | rescan both buses and re-initialise the sensors |
 | `w` | Wi-Fi status: network, the band's address, visualizers connected, lines dropped |
 | `a` | switch to the band's own network "Sanad-Band" now |
 | `j` | look for the saved networks again (e.g. you turned the hotspot on after the band started) |
