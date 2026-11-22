@@ -11,9 +11,16 @@
 #define SANAD_USE_FIFO 1
 #endif
 
-// ---------- Sensors (I2C0) ----------
-constexpr uint8_t PIN_SDA = 4;  // GP4 = pin 6
-constexpr uint8_t PIN_SCL = 5;  // GP5 = pin 7
+// ---------- Pins: band v2b wiring (sanad-3d, assembly guide step 04) ----------
+// Each sensor has its own I2C bus, so one sensor missing or stuck can't block the other.
+constexpr uint8_t MPU_SDA = 26;  // I2C1 SDA, GP26 = pin 31
+constexpr uint8_t MPU_SCL = 27;  // I2C1 SCL, GP27 = pin 32
+constexpr uint8_t MPU_INT = 28;  // GP28 = pin 34 (wired, not used yet: the FIFO is polled)
+constexpr uint8_t MAX_SDA = 4;   // I2C0 SDA, GP4 = pin 6
+constexpr uint8_t MAX_SCL = 5;   // I2C0 SCL, GP5 = pin 7
+constexpr uint8_t MAX_INT = 6;   // GP6 = pin 9 (wired, not used yet)
+constexpr uint8_t PIN_BUTTON = 14;  // GP14 = pin 19, to GND (internal pull-up); not used in v0.2
+constexpr uint8_t PIN_MOTOR = 15;   // GP15 = pin 20, 1 kΩ to the transistor base; held off in v0.2
 constexpr uint32_t I2C_HZ = 400000;
 constexpr uint8_t MPU_ADDR = 0x68;  // AD0 low (default on most modules)
 constexpr uint8_t MAX_ADDR = 0x57;

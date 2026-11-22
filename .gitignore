@@ -27,3 +27,4 @@ __pycache__/
 .idea/
 Thumbs.db
 .DS_Store
+tools/visualizer/.alert_topic

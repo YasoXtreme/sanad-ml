@@ -84,6 +84,17 @@ let dispQ = [1, 0, 0, 0];
 let lastBeatWall = -1e9;
 let lastWall = performance.now();
 
+// Proof of concept: every impact also asks serve.py to push a phone notification (ntfy).
+function sendAlert(peakG) {
+  fetch('/alert', { method: 'POST', body: JSON.stringify({ peakG }) })
+    .then((r) => r.json())
+    .then(({ status }) => {
+      if (status === 'sent') ui.toast('📱 alert sent to phone');
+      else if (status === 'failed') ui.toast('📱 alert failed (no internet?)');
+    })
+    .catch(() => {});
+}
+
 function fire(ev, nowWall) {
   if (ev.type === 'impact') {
     const k = Math.min(1, 0.35 + (ev.peakG - CONFIG.impact.thresholdG) / 3);
@@ -96,6 +107,7 @@ function fire(ev, nowWall) {
     offsetSpring.kick(vScale(d, 1.5 * k));
     dust.burst(k, offsetSpring.x);
     rings.spawn('impact', k, offsetSpring.x);
+    sendAlert(ev.peakG);
   } else if (ev.type === 'beat' && heart.finger) {
     lastBeatWall = nowWall;
     rings.spawn('heart', 1, offsetSpring.x);
